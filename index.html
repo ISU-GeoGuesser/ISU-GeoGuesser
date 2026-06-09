@@ -1,0 +1,136 @@
+<html>
+<head>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        #minimap {
+            width: 100%;
+            height: 100%;
+            min-height: 80px;
+        }
+    </style>
+</head>
+<body>
+    <div
+        x-data="minimapComponent()"
+        x-init="initMap()"
+        @mouseenter="expand()"
+        @mouseleave="collapse()"
+        :class="isExpanded ? 'w-80 h-64' : 'w-24 h-20'"
+        class="fixed bottom-4 right-4 rounded-xl overflow-hidden shadow-2xl border-2 border-white
+               transition-all duration-300 ease-in-out cursor-pointer z-50"
+    >
+        <!-- FIX 4: disable pointer events on map div when collapsed -->
+        <div
+            id="minimap"
+            class="w-full h-full relative z-0"
+            :style="isExpanded ? '' : 'pointer-events: none'"
+        ></div>
+
+        <div
+            x-show="guess !== null"
+            x-transition
+            class="absolute bottom-2 left-1/2 -translate-x-1/2 z-[1000] pointer-events-auto"
+        >
+            <button
+                @click.stop="confirmGuess()"
+                class="bg-green-500 hover:bg-green-600 text-white text-sm font-bold
+                       px-4 py-1.5 rounded-full shadow"
+            >
+                Confirm Guess
+            </button>
+        </div>
+    </div>
+
+    <script>
+    function minimapComponent() {
+        return {
+            map: null,
+            marker: null,
+            guess: null,
+            isExpanded: false,
+            isPointerDown: false,
+
+            initMap() {
+                const wrapper = document.getElementById('minimap').parentElement;
+                this.wrapper = wrapper;
+
+                wrapper.addEventListener('mousedown', (event) => {
+                    if (event.button !== 0) return;
+                    this.holdOpen();
+                }, true);
+
+                window.addEventListener('mouseup', (event) => {
+                    this.releaseHold(event);
+                });
+
+                this.map = L.map('minimap', {
+                    center: [20, 0],
+                    zoom: 2,
+                    zoomControl: false,
+                    attributionControl: false
+                });
+
+                L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '&copy; OpenStreetMap contributors'
+                }).addTo(this.map);
+
+                this.map.on('click', (e) => {
+                    // FIX 4: guard against collapsed clicks
+                    if (!this.isExpanded) return;
+
+                    const { lat, lng } = e.latlng;
+                    this.guess = { lat, lng };
+
+                    if (this.marker) {
+                        this.marker.setLatLng(e.latlng);
+                    } else {
+                        this.marker = L.marker(e.latlng, { draggable: true }).addTo(this.map);
+                        this.marker.on('dragend', (ev) => {
+                            const pos = ev.target.getLatLng();
+                            this.guess = { lat: pos.lat, lng: pos.lng };
+                        });
+                    }
+                });
+
+                this.$watch('isExpanded', () => {
+                    setTimeout(() => this.map.invalidateSize(), 310);
+                });
+            },
+
+            expand() { this.isExpanded = true; },
+            collapse() {
+                if (this.isPointerDown) return;
+                this.isExpanded = false;
+            },
+            holdOpen() {
+                this.isPointerDown = true;
+                this.isExpanded = true;
+            },
+            releaseHold(event) {
+                this.isPointerDown = false;
+                if (this.wrapper && event && !this.isPointerInside(event)) {
+                    this.isExpanded = false;
+                }
+            },
+            isPointerInside(event) {
+                const bounds = this.wrapper.getBoundingClientRect();
+                return event.clientX >= bounds.left &&
+                    event.clientX <= bounds.right &&
+                    event.clientY >= bounds.top &&
+                    event.clientY <= bounds.bottom;
+            },
+
+            confirmGuess() {
+                console.log('Guess submitted:', this.guess);
+            }
+        }
+    }
+
+    </script>
+</body>
+</html>
