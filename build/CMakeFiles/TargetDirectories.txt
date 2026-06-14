@@ -1,0 +1,3 @@
+/Users/lennart/ISU-GeoGuesser/build/CMakeFiles/uniguessr.dir
+/Users/lennart/ISU-GeoGuesser/build/CMakeFiles/edit_cache.dir
+/Users/lennart/ISU-GeoGuesser/build/CMakeFiles/rebuild_cache.dir

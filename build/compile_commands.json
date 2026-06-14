@@ -1,0 +1,8 @@
+[
+{
+  "directory": "/Users/lennart/ISU-GeoGuesser/build",
+  "command": "/usr/bin/clang++  -I/opt/homebrew/opt/sqlite/include -I/usr/local/opt/sqlite/include -I/opt/homebrew/opt/fmt/include -I/usr/local/opt/fmt/include -isystem /opt/homebrew/include -isystem /opt/homebrew/opt/jsoncpp/include -std=gnu++17 -arch arm64 -o CMakeFiles/uniguessr.dir/main.cpp.o -c /Users/lennart/ISU-GeoGuesser/main.cpp",
+  "file": "/Users/lennart/ISU-GeoGuesser/main.cpp",
+  "output": "CMakeFiles/uniguessr.dir/main.cpp.o"
+}
+]

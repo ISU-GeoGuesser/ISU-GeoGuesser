@@ -1,0 +1,353 @@
+<html>
+<head>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        #minimap {
+            width: 100%;
+            height: 100%;
+            min-height: 80px;
+        }
+        #resultMap {
+            width: 100%;
+            height: 500px;
+            border-radius: 0.75rem;
+        }
+        .marker-blue {
+            background-color: #3b82f6;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .marker-red {
+            background-color: #ef4444;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+
+    <!-- NEW: Scene image (shown while playing) -->
+    <div class="w-full h-screen flex items-center justify-center">
+        <img
+            x-data
+            :src="$store.game.imageUrl"
+            class="max-h-screen max-w-full object-contain"
+            alt="Guess where this is"
+        />
+    </div>
+
+    <!-- NEW: Result overlay (shown after confirming guess) -->
+    <div
+        x-data="resultComponent()"
+        x-init="initResultMap()"
+        x-show="$store.game.result !== null && $store.game.result.score !== undefined"
+        class="fixed inset-0 bg-black/90 flex items-center justify-center z-[2000] p-4"
+    >
+        <div class="bg-gray-800 rounded-2xl p-6 shadow-2xl w-full max-w-4xl">
+            <div class="text-center mb-4">
+                <h2 class="text-3xl font-bold text-yellow-400 mb-2">
+                    <span x-text="$store.game.result.score"></span> points
+                </h2>
+                <p class="text-xl text-gray-300">
+                    Distance: <span x-text="$store.game.result.distance_km.toFixed(1)"></span> km
+                </p>
+            </div>
+
+            <!-- Result Map -->
+            <div id="resultMap" class="mb-4"></div>
+
+            <!-- Legend -->
+            <div class="flex justify-center gap-6 mb-4 text-sm">
+                <div class="flex items-center gap-2">
+                    <div class="w-4 h-4 bg-blue-500 rounded-full"></div>
+                    <span>Your Guess</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-4 h-4 bg-red-500 rounded-full"></div>
+                    <span>Actual Location</span>
+                </div>
+            </div>
+
+            <button
+                @click="$store.game.newRound()"
+                class="w-full bg-green-500 hover:bg-green-600 text-white font-bold
+                       px-6 py-3 rounded-lg transition"
+            >
+                Play Again
+            </button>
+        </div>
+    </div>
+
+    <!-- Minimap (unchanged except confirmGuess) -->
+    <div
+        x-data="minimapComponent()"
+        x-init="initMap()"
+        @mouseenter="expand()"
+        @mouseleave="collapse()"
+        :class="isExpanded ? 'w-80 h-64' : 'w-24 h-20'"
+        class="fixed bottom-4 right-4 rounded-xl overflow-hidden shadow-2xl border-2 border-white
+               transition-all duration-300 ease-in-out cursor-pointer z-50"
+    >
+        <div
+            id="minimap"
+            class="w-full h-full relative z-0"
+            :style="isExpanded ? '' : 'pointer-events: none'"
+        ></div>
+
+        <div
+            x-show="guess !== null"
+            x-transition
+            class="absolute bottom-2 left-1/2 -translate-x-1/2 z-[1000] pointer-events-auto"
+        >
+            <button
+                @click.stop="confirmGuess()"
+                class="bg-green-500 hover:bg-green-600 text-white text-sm font-bold
+                       px-4 py-1.5 rounded-full shadow"
+            >
+                Confirm Guess
+            </button>
+        </div>
+    </div>
+
+    <script>
+    // Alpine.js global store — holds session state shared between minimap and result overlay
+    document.addEventListener('alpine:init', () => {
+        Alpine.store('game', {
+            api: '', // Empty string = relative URLs (works with localhost and ngrok)
+            sessionId: null,
+            imageUrl:  null,
+            result:    null,
+            guessLocation: null,  // Store the guess for result display
+
+            async newRound() {
+                this.result = null;
+                this.guessLocation = null;
+                const res  = await fetch(`${this.api}/api/round/new`);
+                const data = await res.json();
+                this.sessionId = data.session_id;
+                this.imageUrl  = data.image_url;
+            }
+        });
+    });
+
+    function minimapComponent() {
+        return {
+            map: null,
+            marker: null,
+            guess: null,
+            isExpanded: false,
+            isPointerDown: false,
+
+            initMap() {
+                // NEW: kick off the first round
+                Alpine.store('game').newRound();
+
+                const wrapper = document.getElementById('minimap').parentElement;
+                this.wrapper = wrapper;
+
+                wrapper.addEventListener('mousedown', (event) => {
+                    if (event.button !== 0) return;
+                    this.holdOpen();
+                }, true);
+
+                window.addEventListener('mouseup', (event) => {
+                    this.releaseHold(event);
+                });
+
+                this.map = L.map('minimap', {
+                    center: [20, 0],
+                    zoom: 2,
+                    zoomControl: false,
+                    attributionControl: false
+                });
+
+                L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                }).addTo(this.map);
+
+                this.map.on('click', (e) => {
+                    if (!this.isExpanded) return;
+                    const { lat, lng } = e.latlng;
+                    this.guess = { lat, lng };
+                    if (this.marker) {
+                        this.marker.setLatLng(e.latlng);
+                    } else {
+                        this.marker = L.marker(e.latlng, { draggable: true }).addTo(this.map);
+                        this.marker.on('dragend', (ev) => {
+                            const pos = ev.target.getLatLng();
+                            this.guess = { lat: pos.lat, lng: pos.lng };
+                        });
+                    }
+                });
+
+                this.$watch('isExpanded', () => {
+                    setTimeout(() => this.map.invalidateSize(), 310);
+                });
+            },
+
+            expand() { this.isExpanded = true; },
+            collapse() {
+                if (this.isPointerDown) return;
+                this.isExpanded = false;
+            },
+            holdOpen() {
+                this.isPointerDown = true;
+                this.isExpanded = true;
+            },
+            releaseHold(event) {
+                this.isPointerDown = false;
+                if (this.wrapper && event && !this.isPointerInside(event)) {
+                    this.isExpanded = false;
+                }
+            },
+            isPointerInside(event) {
+                const bounds = this.wrapper.getBoundingClientRect();
+                return event.clientX >= bounds.left &&
+                    event.clientX <= bounds.right &&
+                    event.clientY >= bounds.top &&
+                    event.clientY <= bounds.bottom;
+            },
+
+            // CHANGED: now sends guess to backend and stores result
+            async confirmGuess() {
+                if (!this.guess) return;
+                const game = Alpine.store('game');
+
+                try {
+                    // Store the guess in the Alpine store
+                    game.guessLocation = { ...this.guess };
+
+                    const res = await fetch(`${game.api}/api/guess/${game.sessionId}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            lat:    this.guess.lat,
+                            lng:    this.guess.lng,
+                            player: 'Player1'   // swap for a real name later
+                        })
+                    });
+
+                    const data = await res.json();
+                    
+                    // Check if response is an error
+                    if (data.error) {
+                        console.error('API Error:', data.error);
+                        alert('Error: ' + data.error);
+                        return;
+                    }
+
+                    console.log('Result data:', data);
+                    game.result = data;  // triggers the result overlay and the watcher
+
+                    // Reset minimap pin for next round
+                    if (this.marker) {
+                        this.map.removeLayer(this.marker);
+                        this.marker = null;
+                    }
+                    this.guess = null;
+                } catch (error) {
+                    console.error('Failed to submit guess:', error);
+                    alert('Failed to submit guess. Please try again.');
+                }
+            }
+        }
+    }
+
+    function resultComponent() {
+        return {
+            resultMap: null,
+
+            initResultMap() {
+                // Watch for result changes and update map
+                this.$watch('$store.game.result', (result) => {
+                    if (result) {
+                        this.updateMap();
+                    }
+                });
+            },
+
+            updateMap() {
+                const game = Alpine.store('game');
+                if (!game.result || !game.guessLocation) return;
+
+                // Initialize map if not already created
+                if (!this.resultMap) {
+                    this.$nextTick(() => {
+                        this.resultMap = L.map('resultMap', {
+                            zoomControl: true,
+                            attributionControl: true
+                        });
+
+                        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                            maxZoom: 19,
+                            attribution: '© OpenStreetMap'
+                        }).addTo(this.resultMap);
+
+                        this.drawMarkers();
+                    });
+                } else {
+                    this.drawMarkers();
+                }
+            },
+
+            drawMarkers() {
+                if (!this.resultMap) return;
+
+                const game = Alpine.store('game');
+                
+                // Clear previous markers/lines
+                this.resultMap.eachLayer((layer) => {
+                    if (layer instanceof L.Marker || layer instanceof L.Polyline) {
+                        this.resultMap.removeLayer(layer);
+                    }
+                });
+
+                const guessLatLng = L.latLng(game.guessLocation.lat, game.guessLocation.lng);
+                const actualLatLng = L.latLng(game.result.actual_lat, game.result.actual_lng);
+
+                // Use CSS classes for markers
+                const blueIcon = L.divIcon({
+                    className: 'marker-blue',
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
+                });
+
+                const redIcon = L.divIcon({
+                    className: 'marker-red',
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
+                });
+
+                L.marker(guessLatLng, { icon: blueIcon }).addTo(this.resultMap)
+                    .bindPopup(`<b>Your Guess</b>`);
+                
+                L.marker(actualLatLng, { icon: redIcon }).addTo(this.resultMap)
+                    .bindPopup(`<b>Actual Location</b><br>${game.result.distance_km.toFixed(1)} km away`);
+
+                // Draw line between them
+                L.polyline([guessLatLng, actualLatLng], {
+                    color: '#fbbf24',
+                    weight: 3,
+                    opacity: 0.7,
+                    dashArray: '10, 10'
+                }).addTo(this.resultMap);
+
+                // Fit bounds to show both markers
+                const bounds = L.latLngBounds([guessLatLng, actualLatLng]);
+                this.resultMap.fitBounds(bounds, { padding: [50, 50] });
+            }
+        };
+    }
+    </script>
+</body>
+</html>
