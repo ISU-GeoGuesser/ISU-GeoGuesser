@@ -3,58 +3,81 @@ project(uniguessr CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Minimum macOS deployment version")
+
+# Only set macOS deployment target on Apple systems
+if(APPLE)
+    # Let CMake use the current system version to match homebrew libraries
+    if(NOT CMAKE_OSX_DEPLOYMENT_TARGET)
+        set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Minimum macOS deployment version")
+    endif()
+endif()
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ── Dependencies ──────────────────────────────────────────────────────────────
 
-find_package(Drogon REQUIRED)
+# Disable install for vendored dependencies by overriding install() command
+function(install)
+endfunction()
 
-# nlohmann/json — install via:  sudo apt install nlohmann-json3-dev
-#             or:               vcpkg install nlohmann-json
-find_package(nlohmann_json REQUIRED)
+add_subdirectory(vendor/json)
+add_subdirectory(vendor/fmt)
 
-# Do NOT call find_package(SQLite3) — Drogon's own FindSQLite3.cmake already
-# creates a target called SQLite3_lib and a second find_package would conflict.
-# Instead, tell the linker to link the library directly by name.
-# Homebrew installs it at /opt/homebrew/opt/sqlite/lib/libsqlite3.dylib on Apple Silicon.
+# yaml-cpp - disable tests/tools for faster build
+set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+set(YAML_CPP_BUILD_CONTRIB OFF CACHE BOOL "" FORCE)
+add_subdirectory(vendor/yaml-cpp)
+
+# Drogon - disable examples/tests for faster build
+set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(BUILD_CTL OFF CACHE BOOL "" FORCE)
+set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+set(BUILD_DROGON_SHARED OFF CACHE BOOL "" FORCE)
+add_subdirectory(vendor/drogon)
+
+# Re-enable install() for our own project
+unset(install)
+macro(install)
+    _install(${ARGV})
+endmacro()
+
+# ── SQLite3 ──
 find_library(SQLITE3_LIB
-    NAMES sqlite3
-    HINTS /opt/homebrew/opt/sqlite/lib   # Apple Silicon Homebrew
-          /usr/local/opt/sqlite/lib       # Intel Homebrew
-          /usr/lib
-          /usr/local/lib
+    NAMES sqlite3 sqlite3.dll
+    HINTS 
+        /opt/homebrew/opt/sqlite/lib /usr/local/opt/sqlite/lib
+        /usr/lib /usr/local/lib
+        /usr/lib/x86_64-linux-gnu /usr/lib/aarch64-linux-gnu
+        ${CMAKE_PREFIX_PATH}/lib
+    PATH_SUFFIXES lib lib64
     REQUIRED
 )
 
-# fmt — install via: brew install fmt
-find_library(FMT_LIB
-    NAMES fmt
-    HINTS /opt/homebrew/opt/fmt/lib   # Apple Silicon Homebrew
-          /usr/local/opt/fmt/lib       # Intel Homebrew
-          /usr/lib
-          /usr/local/lib
+find_path(SQLITE3_INCLUDE_DIR
+    NAMES sqlite3.h
+    HINTS
+        /opt/homebrew/opt/sqlite/include /usr/local/opt/sqlite/include
+        /usr/include /usr/local/include
+        ${CMAKE_PREFIX_PATH}/include
     REQUIRED
 )
 
 # ── Target ────────────────────────────────────────────────────────────────────
 
-add_executable(uniguessr main.cpp)
+add_executable(uniguessr main.cpp DB.cpp)
 
-target_include_directories(uniguessr PRIVATE
-    /opt/homebrew/opt/sqlite/include    # Apple Silicon
-    /usr/local/opt/sqlite/include       # Intel Mac
-    /opt/homebrew/opt/fmt/include       # fmt library
-    /usr/local/opt/fmt/include
-)
+# Include directories
+target_include_directories(uniguessr PRIVATE ${SQLITE3_INCLUDE_DIR})
+if(NOT fmt_FOUND AND NOT FMT_VENDORED)
+    target_include_directories(uniguessr PRIVATE ${FMT_INCLUDE_DIR})
+endif()
 
-target_link_libraries(uniguessr
-    PRIVATE
-        Drogon::Drogon
-        nlohmann_json::nlohmann_json
-        ${FMT_LIB}       # fmt library
-        ${SQLITE3_LIB}   # raw path — bypasses the target-name conflict entirely
-)
+# Link libraries
+target_link_libraries(uniguessr PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(uniguessr PRIVATE drogon)
+target_link_libraries(uniguessr PRIVATE fmt::fmt)
+target_link_libraries(uniguessr PRIVATE ${SQLITE3_LIB})
 
 # ── Optional: copy public/ folder next to the binary ─────────────────────────
 

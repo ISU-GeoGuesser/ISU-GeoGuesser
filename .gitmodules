@@ -1,0 +1,21 @@
+[submodule "build/vendor/json"]
+	path = build/vendor/json
+	url = https://github.com/nlohmann/json.git
+[submodule "build/vendor/fmt"]
+	path = build/vendor/fmt
+	url = https://github.com/fmtlib/fmt.git
+[submodule "build/vendor/drogon"]
+	path = build/vendor/drogon
+	url = https://github.com/drogonframework/drogon.git
+[submodule "vendor/json"]
+	path = vendor/json
+	url = https://github.com/nlohmann/json.git
+[submodule "vendor/fmt"]
+	path = vendor/fmt
+	url = https://github.com/fmtlib/fmt.git
+[submodule "vendor/drogon"]
+	path = vendor/drogon
+	url = https://github.com/drogonframework/drogon.git
+[submodule "vendor/yaml-cpp"]
+	path = vendor/yaml-cpp
+	url = https://github.com/jbeder/yaml-cpp.git
