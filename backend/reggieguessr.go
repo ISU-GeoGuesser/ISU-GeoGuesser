@@ -203,6 +203,8 @@ func main() {
 		locations.POST("", uploadLocation)
 	}
 
+	gamesAddRoutes(r)
+
 	if err := r.Run(); err != nil {
 		log.Fatalf("failed to run server: %v", err)
 	}
