@@ -9,50 +9,114 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/patrickmn/go-cache"
 )
 
 type playerState struct {
-	conn *webSocketConnection
+	Conn *webSocketConnection
 }
 
-func newPlayer(conn *webSocketConnection) *playerState {
-	return &playerState{conn}
+func newPlayerState(conn *webSocketConnection) *playerState {
+	return &playerState{Conn: conn}
 }
 
 type gameState struct {
-	mtx     sync.RWMutex
-	players map[net.Addr]*playerState
+	ID      uuid.UUID
+	Players map[net.Addr]*playerState
 }
 
-func newGame() *gameState {
-	return &gameState{}
+func newGameState(id uuid.UUID) *gameState {
+	return &gameState{
+		ID:      id,
+		Players: make(map[net.Addr]*playerState),
+	}
 }
 
-func (s *gameState) gameAddPlayer(conn *webSocketConnection) {
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-	s.players[conn.conn.RemoteAddr()] = newPlayer(conn)
+type gameMessenger struct {
+	NewConn chan *webSocketConnection
+}
+
+func newGameMessenger() *gameMessenger {
+	return &gameMessenger{
+		NewConn: make(chan *webSocketConnection),
+	}
+}
+
+func (s *gameState) Loop(hub *gameHub, msg *gameMessenger) {
+	log.Printf("[%s] Starting game loop", s.ID)
+
+out:
+	for {
+		select {
+		case conn := <-msg.NewConn:
+			s.AddPlayer(conn)
+		case <-time.After(15 * time.Second):
+			break out
+		}
+	}
+
+	hub.ForgetGame(s.ID)
+	log.Printf("[%s] Game shutting down", s.ID)
+}
+
+func (s *gameState) AddPlayer(conn *webSocketConnection) {
+	addr := conn.conn.RemoteAddr()
+	s.Players[addr] = newPlayerState(conn)
+	log.Printf("[%s] %s joined the game", s.ID, addr)
+}
+
+type gameHub struct {
+	m sync.Map
+}
+
+func newGameHub() gameHub {
+	return gameHub{}
+}
+
+func (h *gameHub) NewGame() uuid.UUID {
+	id := uuid.New()
+	msg := newGameMessenger()
+	state := newGameState(id)
+	go state.Loop(h, msg)
+
+	h.m.Store(id, msg)
+	return id
+}
+
+func (h *gameHub) FindGame(id uuid.UUID) *gameMessenger {
+	result, found := h.m.Load(id)
+	if found {
+		return result.(*gameMessenger)
+	}
+	return nil
+}
+
+func (h *gameHub) ForgetGame(id uuid.UUID) {
+	h.m.Delete(id)
 }
 
 func gamesAddRoutes(eng *gin.Engine) {
-	gameCache := cache.New(10*time.Minute, 5*time.Minute)
+	hub := newGameHub()
 
 	games := eng.Group("/games")
 	games.GET("/start", func(ctx *gin.Context) {
-		id := uuid.New().String()
-		gameCache.SetDefault(id, newGame())
-
+		id := hub.NewGame()
 		ctx.JSON(http.StatusOK, gin.H{
-			"id": id,
+			"id": id.String(),
 		})
 	})
 
 	games.GET("/:id", func(ctx *gin.Context) {
-		id := ctx.Param("id")
-		game, found := gameCache.Get(id)
-		if !found {
+		id, err := uuid.Parse(ctx.Param("id"))
+		if err != nil {
 			ctx.JSON(http.StatusBadRequest, gin.H{
+				"error": "Invalid ID",
+			})
+			return
+		}
+
+		game := hub.FindGame(id)
+		if game == nil {
+			ctx.JSON(http.StatusNotFound, gin.H{
 				"error": "Game does not exist",
 			})
 			return
@@ -64,7 +128,6 @@ func gamesAddRoutes(eng *gin.Engine) {
 			return
 		}
 
-		game.(*gameState).gameAddPlayer(conn)
-		log.Printf("%s joined game %s", conn.conn.RemoteAddr(), id)
+		game.NewConn <- conn
 	})
 }

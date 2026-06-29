@@ -10,7 +10,7 @@ import (
 
 type webSocketConnection struct {
 	conn *websocket.Conn
-	msg  chan any
+	Msg  chan any
 }
 
 var upgrader = websocket.Upgrader{
@@ -21,19 +21,18 @@ var upgrader = websocket.Upgrader{
 
 func webSocketLoop(wrapper *webSocketConnection) {
 	defer wrapper.conn.Close()
-	defer close(wrapper.msg)
+	defer close(wrapper.Msg)
 
 	done := make(chan struct{})
 	go func() {
 		for {
 			var rxMsg map[string]any
-			err := wrapper.conn.ReadJSON(&rxMsg)
-			if err != nil {
+			if err := wrapper.conn.ReadJSON(&rxMsg); err != nil {
 				log.Printf("WebSocket read failure: %v", err)
 				close(done)
 				break
 			} else {
-				wrapper.msg <- rxMsg
+				wrapper.Msg <- rxMsg
 			}
 		}
 	}()
@@ -43,7 +42,7 @@ out:
 		select {
 		case <-done:
 			break out
-		case txMsg := <-wrapper.msg:
+		case txMsg := <-wrapper.Msg:
 			if err := wrapper.conn.WriteJSON(txMsg); err != nil {
 				log.Printf("WebSocket write failure: %v", err)
 				break out
@@ -60,7 +59,7 @@ func openWebSocket(c *gin.Context) (*webSocketConnection, error) {
 
 	wrapper := &webSocketConnection{
 		conn: conn,
-		msg:  make(chan any),
+		Msg:  make(chan any),
 	}
 	go webSocketLoop(wrapper)
 	return wrapper, nil

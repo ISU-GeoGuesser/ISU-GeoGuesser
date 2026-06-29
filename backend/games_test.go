@@ -7,15 +7,16 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 )
 
-func testGinRequest(r *gin.Engine, method string, url string, body io.Reader) *httptest.ResponseRecorder {
+func testHTTPRequest(h http.Handler, method string, url string, body io.Reader) *httptest.ResponseRecorder {
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(method, url, body)
-	r.ServeHTTP(w, req)
+	h.ServeHTTP(w, req)
 	return w
 }
 
@@ -23,7 +24,7 @@ func TestGamesStartJoin(t *testing.T) {
 	r := gin.Default()
 	gamesAddRoutes(r)
 
-	w := testGinRequest(r, "GET", "/games/start", nil)
+	w := testHTTPRequest(r, "GET", "/games/start", nil)
 
 	var startResponse struct {
 		ID string
@@ -32,9 +33,10 @@ func TestGamesStartJoin(t *testing.T) {
 	require.Equal(t, 200, w.Code)
 	require.Nil(t, json.Unmarshal(w.Body.Bytes(), &startResponse))
 
-	w = testGinRequest(r, "GET", "/games/"+startResponse.ID, nil)
+	conn := testOpenWebSocket(t, r, "/games/"+startResponse.ID)
+	defer conn.Close()
 
-	require.Equal(t, 400, w.Code)
+	time.Sleep(1 * time.Second)
 }
 
 func TestMain(m *testing.M) {
