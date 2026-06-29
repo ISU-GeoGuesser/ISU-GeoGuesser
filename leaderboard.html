@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ReggieGuessr | Leaderboard</title>
+  <meta name="description" content="See the top ISU campus guessers on the ReggieGuessr leaderboard." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- reused from home page exactly -->
+  <header class="site-header">
+    <a class="brand" href="index.html" aria-label="ReggieGuessr home">
+      <svg class="brand__pin" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+        <path d="M12 1.5c-4.4 0-8 3.5-8 7.9 0 5.6 7.1 13.1 7.4 13.4a.8.8 0 0 0 1.2 0c.3-.3 7.4-7.8 7.4-13.4 0-4.4-3.6-7.9-8-7.9z" fill="currentColor"/>
+        <circle cx="12" cy="9.4" r="3" fill="#fff"/>
+      </svg>
+      <span class="brand__name">Reggie<span class="brand__accent">Guessr</span></span>
+    </a>
+
+    <a class="btn btn--ghost" href="index.html">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+        <path d="M19 12H5M12 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Back
+    </a>
+  </header>
+
+  <main class="lb-main">
+
+    <div class="lb-hero">
+      <p class="lb-kicker">Illinois State University</p>
+      <h1 class="lb-title">Leaderboard</h1>
+      <p class="lb-subtitle">Top campus navigators, ranked by high score.</p>
+    </div>
+
+    <!-- podium: top 3 -->
+    <div class="podium" aria-label="Top three players">
+
+      <!-- 2nd place -->
+      <div class="podium__slot podium__slot--2">
+        <div class="podium__avatar" aria-hidden="true">MJ</div>
+        <p class="podium__name">MJ</p>
+        <p class="podium__score">4,820</p>
+        <div class="podium__stand podium__stand--2">
+          <span class="podium__rank" aria-label="2nd place">2</span>
+        </div>
+      </div>
+
+      <!-- 1st place -->
+      <div class="podium__slot podium__slot--1">
+        <div class="podium__crown" aria-hidden="true">
+          <svg viewBox="0 0 24 14" width="28" height="16" fill="none">
+            <path d="M1 13 L4 2 L9 8 L12 1 L15 8 L20 2 L23 13 Z" fill="#ce0e2d" stroke="#ce0e2d" stroke-width="1" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="podium__avatar podium__avatar--1" aria-hidden="true">AR</div>
+        <p class="podium__name">AR</p>
+        <p class="podium__score podium__score--1">5,490</p>
+        <div class="podium__stand podium__stand--1">
+          <span class="podium__rank" aria-label="1st place">1</span>
+        </div>
+      </div>
+
+      <!-- 3rd place -->
+      <div class="podium__slot podium__slot--3">
+        <div class="podium__avatar" aria-hidden="true">TK</div>
+        <p class="podium__name">TK</p>
+        <p class="podium__score">4,210</p>
+        <div class="podium__stand podium__stand--3">
+          <span class="podium__rank" aria-label="3rd place">3</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- rest of the table -->
+    <div class="lb-table-wrap">
+      <table class="lb-table" aria-label="Full leaderboard">
+        <thead>
+          <tr>
+            <th scope="col" class="col-rank">Rank</th>
+            <th scope="col" class="col-name">Player</th>
+            <th scope="col" class="col-score">High Score</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="col-rank rank-num">4</td>
+            <td class="col-name player-name">RedBird99</td>
+            <td class="col-score score-val">3,985</td>
+          </tr>
+          <tr>
+            <td class="col-rank rank-num">5</td>
+            <td class="col-name player-name">QuadKing</td>
+            <td class="col-score score-val">3,740</td>
+          </tr>
+          <tr>
+            <td class="col-rank rank-num">6</td>
+            <td class="col-name player-name">NormalHall</td>
+            <td class="col-score score-val">3,610</td>
+          </tr>
+          <tr>
+            <td class="col-rank rank-num">7</td>
+            <td class="col-name player-name">SycamoreWalker</td>
+            <td class="col-score score-val">3,420</td>
+          </tr>
+          <tr>
+            <td class="col-rank rank-num">8</td>
+            <td class="col-name player-name">BroMetz</td>
+            <td class="col-score score-val">3,190</td>
+          </tr>
+          <tr>
+            <td class="col-rank rank-num">9</td>
+            <td class="col-name player-name">ISUfan2024</td>
+            <td class="col-score score-val">2,880</td>
+          </tr>
+          <tr>
+            <td class="col-rank rank-num">10</td>
+            <td class="col-name player-name">Schroeder42</td>
+            <td class="col-score score-val">2,650</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+
+  <footer class="site-footer">
+    <span>IT&nbsp;391 Directed Project</span>
+    <span class="site-footer__dot" aria-hidden="true">&bull;</span>
+    <span>A GeoGuessr for the ISU campus</span>
+  </footer>
+
+</body>
+</html>
