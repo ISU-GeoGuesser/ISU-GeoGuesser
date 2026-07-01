@@ -19,6 +19,25 @@ func newPlayerState(conn *webSocketConnection) *playerState {
 	return &playerState{Conn: conn}
 }
 
+func (p *playerState) Close() {
+	p.Conn.Close()
+}
+
+func (p *playerState) Loop(game *gameMessenger) {
+	for msg := range p.Conn.Rx {
+		game.PlayerMsg <- &struct {
+			ply *playerState
+			msg *webSocketMessage
+		}{p, msg}
+	}
+
+	game.PlayerLeft <- p
+}
+
+func (p *playerState) SendMessage(msg *webSocketMessage) {
+	p.Conn.Tx <- msg
+}
+
 type gameState struct {
 	ID      uuid.UUID
 	Players map[net.Addr]*playerState
@@ -32,12 +51,22 @@ func newGameState(id uuid.UUID) *gameState {
 }
 
 type gameMessenger struct {
-	NewConn chan *webSocketConnection
+	NewConn   chan *webSocketConnection
+	PlayerMsg chan *struct {
+		ply *playerState
+		msg *webSocketMessage
+	}
+	PlayerLeft chan *playerState
 }
 
 func newGameMessenger() *gameMessenger {
 	return &gameMessenger{
 		NewConn: make(chan *webSocketConnection),
+		PlayerMsg: make(chan *struct {
+			ply *playerState
+			msg *webSocketMessage
+		}),
+		PlayerLeft: make(chan *playerState),
 	}
 }
 
@@ -47,21 +76,41 @@ func (s *gameState) Loop(hub *gameHub, msg *gameMessenger) {
 out:
 	for {
 		select {
+		case msg := <-msg.PlayerMsg:
+			addr := msg.ply.Conn.conn.RemoteAddr()
+			log.Printf("[%s] %s: %v", s.ID, addr, *msg.msg)
+		case ply := <-msg.PlayerLeft:
+			s.ForgetPlayer(ply)
 		case conn := <-msg.NewConn:
-			s.AddPlayer(conn)
+			s.AddPlayer(conn, msg)
 		case <-time.After(15 * time.Second):
 			break out
 		}
 	}
 
-	hub.ForgetGame(s.ID)
 	log.Printf("[%s] Game shutting down", s.ID)
+	hub.ForgetGame(s.ID)
+
+	for _, ply := range s.Players {
+		s.ForgetPlayer(ply)
+	}
 }
 
-func (s *gameState) AddPlayer(conn *webSocketConnection) {
+func (s *gameState) AddPlayer(conn *webSocketConnection, msg *gameMessenger) {
 	addr := conn.conn.RemoteAddr()
-	s.Players[addr] = newPlayerState(conn)
+	ply := newPlayerState(conn)
+	s.Players[addr] = ply
+	go ply.Loop(msg)
+
+	ply.SendMessage(newWebSocketMessageAssert("JOINED", nil))
 	log.Printf("[%s] %s joined the game", s.ID, addr)
+}
+
+func (s *gameState) ForgetPlayer(ply *playerState) {
+	addr := ply.Conn.conn.RemoteAddr()
+	delete(s.Players, addr)
+	ply.Close()
+	log.Printf("[%s] %s left the game", s.ID, addr)
 }
 
 type gameHub struct {

@@ -20,7 +20,7 @@ func testHTTPRequest(h http.Handler, method string, url string, body io.Reader) 
 	return w
 }
 
-func TestGamesStartJoin(t *testing.T) {
+func TestGamesStartJoinLeave(t *testing.T) {
 	r := gin.Default()
 	gamesAddRoutes(r)
 
@@ -34,8 +34,14 @@ func TestGamesStartJoin(t *testing.T) {
 	require.Nil(t, json.Unmarshal(w.Body.Bytes(), &startResponse))
 
 	conn := testOpenWebSocket(t, r, "/games/"+startResponse.ID)
-	defer conn.Close()
 
+	var msg webSocketMessage
+	require.Nil(t, conn.ReadJSON(&msg))
+	require.Equal(t, msg.Type, "JOINED")
+
+	time.Sleep(500 * time.Millisecond)
+	require.Nil(t, webSocketSendClose(conn, ""))
+	conn.Close()
 	time.Sleep(1 * time.Second)
 }
 
