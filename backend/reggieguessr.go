@@ -205,6 +205,14 @@ func main() {
 
 	gamesAddRoutes(r)
 
+	// Static frontend pages. Run the server from the repo root
+	// (`go run ./backend`) so these relative paths resolve.
+	r.Static("/home", "./home")
+	r.Static("/game", "./game")
+	r.GET("/", func(c *gin.Context) {
+		c.Redirect(http.StatusTemporaryRedirect, "/home/")
+	})
+
 	if err := r.Run(); err != nil {
 		log.Fatalf("failed to run server: %v", err)
 	}

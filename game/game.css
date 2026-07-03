@@ -1,0 +1,593 @@
+/* ReggieGuessr — gameplay screen. Shares the design language of
+   home/styles.css: dark night base, full-bleed photo, ISU red actions. */
+
+:root {
+    --isu-red: #ce0e2d;
+    --isu-red-deep: #a30a23;
+
+    --ink: #ffffff;
+    --ink-soft: rgba(255, 255, 255, 0.78);
+    --ink-faint: rgba(255, 255, 255, 0.6);
+    --night: #14100f;
+    --panel: rgba(20, 16, 15, 0.86);
+
+    /* Semantic z-index scale */
+    --z-photo: 0;
+    --z-scrim: 1;
+    --z-hud: 20;
+    --z-dock: 30;
+    --z-overlay: 40;
+    --z-toast: 50;
+
+    --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+* { box-sizing: border-box; }
+
+/* Our .overlay/.toast display rules would otherwise beat the UA's
+   [hidden] { display: none }, leaving every overlay visible at once. */
+[hidden] { display: none !important; }
+
+html, body { height: 100%; }
+
+body {
+    margin: 0;
+    min-height: 100svh;
+    font-family: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: var(--ink);
+    background: var(--night);
+    overflow: hidden;
+}
+
+/* ---------- round photo ---------- */
+
+.round-photo {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    z-index: var(--z-photo);
+}
+
+.round-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-scrim);
+    background:
+        linear-gradient(180deg, rgba(10, 8, 8, 0.62) 0%, transparent 22%, transparent 70%, rgba(10, 8, 8, 0.55) 100%);
+    pointer-events: none;
+}
+
+/* ---------- HUD ---------- */
+
+.hud {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: var(--z-hud);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: clamp(0.8rem, 2vw, 1.4rem) clamp(1rem, 3vw, 2.2rem);
+}
+
+.brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    color: var(--ink);
+    font-weight: 800;
+    font-size: 1.1rem;
+    letter-spacing: -0.01em;
+}
+.brand__pin { color: var(--isu-red); filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4)); flex: none; }
+.brand__name { text-shadow: 0 1px 12px rgba(0, 0, 0, 0.45); }
+.brand__accent { color: var(--isu-red); }
+.brand:focus-visible { outline: 3px solid #fff; outline-offset: 3px; border-radius: 4px; }
+
+.hud__stats {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.hud__stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.1rem;
+    min-width: 5.2rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: 0.8rem;
+    background: var(--panel);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.hud__stat-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--ink-faint);
+}
+
+.hud__stat-value {
+    font-size: 1.15rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+.hud__stat--timer.is-low {
+    border-color: var(--isu-red);
+    background: rgba(206, 14, 45, 0.28);
+}
+.hud__stat--timer.is-low .hud__stat-value { color: #ffb3bf; }
+
+/* ---------- roster ---------- */
+
+.roster {
+    position: fixed;
+    top: clamp(4.4rem, 10vh, 5.6rem);
+    right: clamp(1rem, 3vw, 2.2rem);
+    z-index: var(--z-hud);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.35rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.roster:has(:only-child) { display: none; } /* hide in single player */
+
+.roster__player {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    background: var(--panel);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+}
+
+.roster__dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.35);
+    flex: none;
+}
+.roster__player.has-guessed .roster__dot { background: #3ecf6a; }
+
+/* ---------- buttons (same vocabulary as home) ---------- */
+
+.btn {
+    --btn-bg: transparent;
+    --btn-fg: var(--ink);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    padding: 0.8rem 1.5rem;
+    border: 1.5px solid transparent;
+    border-radius: 999px;
+    background: var(--btn-bg);
+    color: var(--btn-fg);
+    font: inherit;
+    font-weight: 700;
+    font-size: 0.98rem;
+    letter-spacing: 0.01em;
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+        transform 0.25s var(--ease-out-quint),
+        box-shadow 0.25s var(--ease-out-quint),
+        background-color 0.2s ease,
+        border-color 0.2s ease,
+        color 0.2s ease,
+        opacity 0.2s ease;
+}
+
+.btn:hover:not(:disabled) { transform: translateY(-2px); }
+.btn:active:not(:disabled) { transform: translateY(0); }
+.btn:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.btn--primary {
+    --btn-bg: var(--isu-red);
+    --btn-fg: #fff;
+    box-shadow: 0 14px 34px -12px rgba(206, 14, 45, 0.85);
+}
+.btn--primary:hover:not(:disabled) { --btn-bg: var(--isu-red-deep); }
+
+.btn--solid {
+    --btn-bg: #fff;
+    --btn-fg: var(--night);
+}
+.btn--solid:hover { --btn-bg: #f1ece8; }
+
+.btn--ghost {
+    border-color: rgba(255, 255, 255, 0.6);
+    background: rgba(20, 16, 15, 0.28);
+    padding: 0.6rem 1.1rem;
+    font-size: 0.9rem;
+}
+.btn--ghost:hover { background: #fff; color: var(--night); border-color: #fff; }
+
+/* ---------- map dock ---------- */
+
+.map-dock {
+    position: fixed;
+    right: clamp(0.8rem, 2vw, 1.6rem);
+    bottom: clamp(0.8rem, 2vw, 1.6rem);
+    z-index: var(--z-dock);
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    width: min(19rem, calc(100vw - 1.6rem));
+    transition: width 0.3s var(--ease-out-quint);
+}
+
+/* growing on hover/focus is a GeoGuessr affordance players expect */
+.map-dock:hover,
+.map-dock:focus-within {
+    width: min(34rem, calc(100vw - 1.6rem));
+}
+
+.map-dock__map {
+    height: 13rem;
+    border-radius: 0.9rem;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 0 18px 44px -18px rgba(0, 0, 0, 0.9);
+    overflow: hidden;
+    transition: height 0.3s var(--ease-out-quint);
+    background: #202020; /* while tiles load */
+}
+
+.map-dock:hover .map-dock__map,
+.map-dock:focus-within .map-dock__map {
+    height: min(24rem, 55svh);
+}
+
+.map-dock__actions { display: flex; }
+.map-dock__guess { width: 100%; }
+
+/* Reveal state: the dock becomes the main stage */
+body[data-state="reveal"] .map-dock,
+body[data-state="reveal"] .map-dock:hover {
+    left: 50%;
+    right: auto;
+    bottom: clamp(0.8rem, 3vh, 2rem);
+    transform: translateX(-50%);
+    width: min(52rem, calc(100vw - 1.6rem));
+}
+
+body[data-state="reveal"] .map-dock__map,
+body[data-state="reveal"] .map-dock:hover .map-dock__map {
+    height: min(20rem, 42svh);
+}
+
+body[data-state="reveal"] .map-dock__actions { display: none; }
+
+/* Anything but an active round hides the dock */
+body[data-state="connecting"] .map-dock,
+body[data-state="lobby"] .map-dock,
+body[data-state="over"] .map-dock { display: none; }
+
+/* ---------- reveal panel ---------- */
+
+.reveal {
+    padding: 0.9rem 1.1rem 1rem;
+    border-radius: 0.9rem;
+    background: var(--panel);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.reveal__title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 800;
+}
+
+.reveal__location {
+    margin: 0.15rem 0 0.7rem;
+    font-size: 0.88rem;
+    color: var(--ink-soft);
+}
+.reveal__location strong { color: var(--ink); }
+
+.reveal__results {
+    margin: 0 0 0.9rem;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.reveal__row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    row-gap: 0.25rem;
+    column-gap: 0.8rem;
+    align-items: baseline;
+}
+
+.reveal__row-name { font-weight: 700; font-size: 0.95rem; }
+.reveal__row-name .you { color: var(--ink-faint); font-weight: 600; }
+
+.reveal__row-points {
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+.reveal__row-points small {
+    font-weight: 600;
+    color: var(--ink-faint);
+    margin-left: 0.4rem;
+}
+
+.reveal__bar {
+    grid-column: 1 / -1;
+    height: 0.4rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.14);
+    overflow: hidden;
+}
+
+.reveal__bar-fill {
+    display: block;
+    height: 100%;
+    width: 0;
+    border-radius: inherit;
+    background: var(--isu-red);
+    transition: width 0.9s var(--ease-out-quint);
+}
+
+.reveal__actions { display: flex; justify-content: flex-end; }
+
+/* ---------- overlays (lobby / game over / disconnected) ---------- */
+
+.overlay {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-overlay);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem;
+    background: rgba(10, 8, 8, 0.66);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+}
+
+.overlay__card {
+    width: min(26rem, 100%);
+    padding: clamp(1.4rem, 4vw, 2.2rem);
+    border-radius: 1.2rem;
+    background: var(--panel);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.9);
+    text-align: center;
+    animation: rise 0.5s var(--ease-out-quint) both;
+}
+
+.overlay__kicker {
+    margin: 0 0 0.3rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+}
+
+.overlay__title {
+    margin: 0;
+    font-size: clamp(1.5rem, 4vw, 2rem);
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+}
+
+.overlay__sub {
+    margin: 0.5rem 0 1.2rem;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: var(--ink-soft);
+    text-wrap: pretty;
+}
+
+.overlay__cta { width: 100%; margin-top: 1.1rem; }
+
+.overlay__actions {
+    display: flex;
+    gap: 0.7rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 1.2rem;
+}
+
+/* lobby specifics */
+
+.lobby__share {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.1rem;
+}
+
+.lobby__link {
+    flex: 1;
+    min-width: 0;
+    padding: 0.6rem 0.8rem;
+    border-radius: 0.7rem;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--ink-soft);
+    font: inherit;
+    font-size: 0.82rem;
+}
+
+.lobby__name-label {
+    display: block;
+    text-align: left;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--ink-soft);
+    margin-bottom: 0.3rem;
+}
+
+.lobby__name {
+    width: 100%;
+    padding: 0.7rem 0.9rem;
+    border-radius: 0.7rem;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--ink);
+    font: inherit;
+    font-weight: 600;
+}
+
+.lobby__name:focus-visible,
+.lobby__link:focus-visible {
+    outline: 3px solid #fff;
+    outline-offset: 2px;
+}
+
+.lobby__players {
+    margin: 1rem 0 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    justify-content: center;
+}
+
+.lobby__players li {
+    padding: 0.3rem 0.8rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+/* standings */
+
+.standings {
+    margin: 1.2rem 0 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    text-align: left;
+}
+
+.standings li {
+    display: flex;
+    align-items: baseline;
+    gap: 0.7rem;
+    padding: 0.55rem 0.9rem;
+    border-radius: 0.7rem;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.standings li:first-child {
+    background: rgba(206, 14, 45, 0.22);
+    border-color: rgba(206, 14, 45, 0.6);
+}
+
+.standings__rank { font-weight: 800; color: var(--ink-faint); min-width: 1.2rem; }
+.standings__name { font-weight: 700; flex: 1; }
+.standings__score { font-weight: 800; font-variant-numeric: tabular-nums; }
+
+/* ---------- toast ---------- */
+
+.toast {
+    position: fixed;
+    left: 50%;
+    bottom: 1.2rem;
+    transform: translateX(-50%);
+    z-index: var(--z-toast);
+    margin: 0;
+    padding: 0.6rem 1.1rem;
+    border-radius: 999px;
+    background: var(--panel);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    font-size: 0.88rem;
+    font-weight: 600;
+    animation: rise 0.35s var(--ease-out-quint) both;
+}
+
+/* ---------- map pins ---------- */
+
+.pin { filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5)); }
+.pin svg { display: block; }
+
+.pin-label {
+    background: var(--panel);
+    color: var(--ink);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 0.5rem;
+    font-family: "Archivo", system-ui, sans-serif;
+    font-weight: 700;
+    font-size: 0.75rem;
+    box-shadow: 0 6px 18px -8px rgba(0, 0, 0, 0.8);
+}
+.pin-label::before { display: none; }
+
+/* ---------- motion ---------- */
+
+@keyframes rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .btn, .map-dock, .map-dock__map, .reveal__bar-fill { transition: none; }
+    .overlay__card, .toast { animation: none; }
+    .btn:hover:not(:disabled) { transform: none; }
+}
+
+/* ---------- small screens ---------- */
+
+@media (max-width: 40rem) {
+    .hud { flex-wrap: wrap; }
+    .hud__stat { min-width: 4.2rem; padding: 0.35rem 0.6rem; }
+    .hud__stat-value { font-size: 1rem; }
+    .brand__name { font-size: 1rem; }
+
+    .map-dock,
+    .map-dock:hover,
+    .map-dock:focus-within {
+        left: 0.6rem;
+        right: 0.6rem;
+        bottom: 0.6rem;
+        width: auto;
+    }
+    .map-dock__map { height: 11rem; }
+    .map-dock:hover .map-dock__map,
+    .map-dock:focus-within .map-dock__map { height: min(18rem, 45svh); }
+
+    body[data-state="reveal"] .map-dock,
+    body[data-state="reveal"] .map-dock:hover {
+        left: 0.6rem;
+        transform: none;
+        width: auto;
+    }
+
+    .roster { display: none; }
+}

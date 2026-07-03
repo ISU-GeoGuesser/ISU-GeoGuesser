@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ReggieGuessr — Round in progress</title>
+    <meta name="description" content="Guess where on the ISU campus this photo was taken. Drop a pin, lock it in, and score by how close you get." />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&display=swap" rel="stylesheet" />
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <link rel="stylesheet" href="game.css" />
+</head>
+<body data-state="connecting">
+    <!-- The round photo is the whole background, same as the home page hero -->
+    <img class="round-photo" id="round-photo" src="" alt="Campus photo for this round — figure out where it was taken" hidden />
+    <div class="round-scrim" aria-hidden="true"></div>
+
+    <header class="hud">
+        <a class="brand" href="/home/" aria-label="ReggieGuessr home">
+            <svg class="brand__pin" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+                <path d="M12 1.5c-4.4 0-8 3.5-8 7.9 0 5.6 7.1 13.1 7.4 13.4a.8.8 0 0 0 1.2 0c.3-.3 7.4-7.8 7.4-13.4 0-4.4-3.6-7.9-8-7.9z" fill="currentColor"/>
+                <circle cx="12" cy="9.4" r="3" fill="#fff"/>
+            </svg>
+            <span class="brand__name">Reggie<span class="brand__accent">Guessr</span></span>
+        </a>
+
+        <div class="hud__stats" role="status" aria-live="polite">
+            <div class="hud__stat">
+                <span class="hud__stat-label">Round</span>
+                <span class="hud__stat-value" id="hud-round">–</span>
+            </div>
+            <div class="hud__stat hud__stat--timer" id="hud-timer-box">
+                <span class="hud__stat-label">Time</span>
+                <span class="hud__stat-value" id="hud-timer">–:––</span>
+            </div>
+            <div class="hud__stat">
+                <span class="hud__stat-label">Score</span>
+                <span class="hud__stat-value" id="hud-score">0</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Who's in the game + who has locked a guess (multiplayer) -->
+    <ul class="roster" id="roster" aria-label="Players"></ul>
+
+    <!-- Map dock: collapsed in the corner while guessing, grows on hover,
+         takes over the screen for the post-round reveal -->
+    <section class="map-dock" id="map-dock" aria-label="Campus map — click to place your guess">
+        <div class="map-dock__map" id="map"></div>
+
+        <div class="map-dock__actions">
+            <button class="btn btn--primary map-dock__guess" id="guess-btn" disabled>Place your pin on the map</button>
+        </div>
+
+        <aside class="reveal" id="reveal-panel" hidden>
+            <h2 class="reveal__title" id="reveal-title">Round 1 results</h2>
+            <p class="reveal__location" id="reveal-location"></p>
+            <ol class="reveal__results" id="reveal-results"></ol>
+            <div class="reveal__actions">
+                <button class="btn btn--primary" id="next-btn">Next round</button>
+            </div>
+        </aside>
+    </section>
+
+    <!-- Lobby -->
+    <div class="overlay" id="lobby" hidden>
+        <div class="overlay__card">
+            <h1 class="overlay__title">Game lobby</h1>
+            <p class="overlay__sub">Send this link to friends, then start when everyone's in.</p>
+
+            <div class="lobby__share">
+                <input class="lobby__link" id="share-link" type="text" readonly aria-label="Invite link" />
+                <button class="btn btn--ghost" id="copy-btn">Copy link</button>
+            </div>
+
+            <label class="lobby__name-label" for="name-input">Your name</label>
+            <input class="lobby__name" id="name-input" type="text" maxlength="24" autocomplete="nickname" placeholder="Reggie" />
+
+            <ul class="lobby__players" id="lobby-players" aria-label="Players in lobby"></ul>
+
+            <button class="btn btn--primary overlay__cta" id="start-btn">Start game</button>
+        </div>
+    </div>
+
+    <!-- Final results -->
+    <div class="overlay" id="gameover" hidden>
+        <div class="overlay__card">
+            <p class="overlay__kicker">Final results</p>
+            <h1 class="overlay__title" id="final-headline">Nice guessing</h1>
+            <ol class="standings" id="standings"></ol>
+            <div class="overlay__actions">
+                <button class="btn btn--primary" id="again-btn">Play again</button>
+                <a class="btn btn--solid" href="/home/">Back to home</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Connection problems -->
+    <div class="overlay" id="disconnected" hidden>
+        <div class="overlay__card">
+            <h1 class="overlay__title">Connection lost</h1>
+            <p class="overlay__sub" id="disconnected-reason">The game server closed the connection.</p>
+            <div class="overlay__actions">
+                <button class="btn btn--primary" id="rejoin-btn">Rejoin</button>
+                <a class="btn btn--solid" href="/home/">Back to home</a>
+            </div>
+        </div>
+    </div>
+
+    <p class="toast" id="toast" role="status" hidden></p>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="game.js"></script>
+</body>
+</html>

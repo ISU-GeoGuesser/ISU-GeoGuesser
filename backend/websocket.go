@@ -97,7 +97,9 @@ func openWebSocket(c *gin.Context) (*webSocketConnection, error) {
 
 	wrapper := &webSocketConnection{
 		conn: conn,
-		Tx:   make(chan *webSocketMessage),
+		// Tx is buffered so the game loop can send without blocking even
+		// if this connection just died (see playerState.SendMessage).
+		Tx:   make(chan *webSocketMessage, 16),
 		Rx:   make(chan *webSocketMessage),
 	}
 	go wrapper.loop()
