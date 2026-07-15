@@ -1,3 +1,4 @@
-reggieguessr
+ex_frontend
+ex_backend
 .env
-images/*
+public/images/*
