@@ -1,4 +1,4 @@
 ex_frontend
 ex_backend
 .env
-public/images/*
+docs/images/*
