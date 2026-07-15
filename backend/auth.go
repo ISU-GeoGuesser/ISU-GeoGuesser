@@ -2,21 +2,13 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
-	"log"
 	"net/http"
-	"os"
 
-	gometadata "github.com/FlavioCFOliveira/GoMetadata"
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
-	_ "github.com/lib/pq"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/github"
 )
-
-var db *sql.DB
 
 type Authenticator interface {
 	Middleware() gin.HandlerFunc
@@ -136,76 +128,4 @@ func (a *GitHubAuthenticator) RegisterRoutes(r *gin.Engine) {
 			"email":    user.Email,
 		})
 	})
-}
-
-func uploadLocation(c *gin.Context) {
-	file, err := c.FormFile("image")
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "No image received: " + err.Error()})
-		return
-	}
-
-	dst := "./images/" + file.Filename
-	if err := c.SaveUploadedFile(file, dst); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file"})
-		return
-	}
-
-	m, err := gometadata.ReadFile(dst)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read metadata: " + err.Error()})
-		return
-	}
-
-	response := gin.H{
-		"message":  "Image uploaded successfully",
-		"filename": file.Filename,
-		"size":     file.Size,
-	}
-
-	lat, lon := 0.0, 0.0
-	if gpsLat, gpsLon, ok := m.GPS(); ok {
-		lat, lon = gpsLat, gpsLon
-		response["latitude"] = lat
-		response["longitude"] = lon
-	}
-
-	// _, err = db.Exec(
-	// 	"INSERT INTO locations (filename, latitude, longitude) VALUES ($1, $2, $3)",
-	// 	file.Filename, lat, lon,
-	// )
-	// if err != nil {
-	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save location"})
-	// 	return
-	// }
-
-	c.JSON(http.StatusOK, response)
-}
-
-func main() {
-	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found, falling back to environment")
-	}
-
-	var auth Authenticator = NewGitHubAuthenticator(
-		os.Getenv("GITHUB_CLIENT_ID"),
-		os.Getenv("GITHUB_CLIENT_SECRET"),
-		os.Getenv("SESSION_SECRET"),
-		// os.Getenv("GITHUB_ORG_NAME"),
-	)
-
-	r := gin.Default()
-
-	auth.(*GitHubAuthenticator).RegisterRoutes(r)
-
-	locations := r.Group("/locations", auth.Middleware())
-	{
-		locations.POST("", uploadLocation)
-	}
-
-	gamesAddRoutes(r)
-
-	if err := r.Run(); err != nil {
-		log.Fatalf("failed to run server: %v", err)
-	}
 }
