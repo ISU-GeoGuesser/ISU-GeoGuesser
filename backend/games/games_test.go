@@ -1,4 +1,4 @@
-package main
+package games
 
 import (
 	"encoding/json"
@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
+	ws "isu-geoguesser/websocket"
 )
 
 func testHTTPRequest(h http.Handler, method string, url string, body io.Reader) *httptest.ResponseRecorder {
@@ -22,7 +23,7 @@ func testHTTPRequest(h http.Handler, method string, url string, body io.Reader) 
 
 func TestGamesStartJoinLeave(t *testing.T) {
 	r := gin.Default()
-	gamesAddRoutes(r)
+	AddRoutes(r)
 
 	w := testHTTPRequest(r, "GET", "/games/start", nil)
 
@@ -33,14 +34,14 @@ func TestGamesStartJoinLeave(t *testing.T) {
 	require.Equal(t, 200, w.Code)
 	require.Nil(t, json.Unmarshal(w.Body.Bytes(), &startResponse))
 
-	conn := testOpenWebSocket(t, r, "/games/"+startResponse.ID)
+	conn := ws.OpenTest(t, r, "/games/"+startResponse.ID)
 
-	var msg webSocketMessage
+	var msg ws.Message
 	require.Nil(t, conn.ReadJSON(&msg))
 	require.Equal(t, msg.Type, "JOINED")
 
 	time.Sleep(500 * time.Millisecond)
-	require.Nil(t, webSocketSendClose(conn, ""))
+	require.Nil(t, ws.SendClose(conn, ""))
 	conn.Close()
 	time.Sleep(1 * time.Second)
 }

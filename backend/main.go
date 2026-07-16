@@ -7,6 +7,8 @@ import (
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 
+	games "isu-geoguesser/games"
+
 	"isu-geoguesser/auth"
 	db "isu-geoguesser/database"
 )
@@ -41,7 +43,7 @@ func main() {
 		locations.POST("", uploadLocation)
 	}
 
-	gamesAddRoutes(r)
+	games.AddRoutes(r)
 
 	if err := r.Run(":3000"); err != nil {
 		log.Fatalf("failed to run server: %v", err)

@@ -1,6 +1,7 @@
-package main
+package games
 
 import (
+	"encoding/json"
 	"log"
 	"net"
 	"net/http"
@@ -11,13 +12,16 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	ws "isu-geoguesser/websocket"
 )
 
 type playerState struct {
-	Conn *webSocketConnection
+	Conn       *ws.Connection
+	Guess      *Location
+	TotalScore int
 }
 
-func newPlayerState(conn *webSocketConnection) *playerState {
+func newPlayerState(conn *ws.Connection) *playerState {
 	return &playerState{Conn: conn}
 }
 
@@ -29,44 +33,51 @@ func (p *playerState) Loop(game *gameMessenger) {
 	for msg := range p.Conn.Rx {
 		game.PlayerMsg <- &struct {
 			ply *playerState
-			msg *webSocketMessage
+			msg *ws.Message
 		}{p, msg}
 	}
 
 	game.PlayerLeft <- p
 }
 
-func (p *playerState) SendMessage(msg *webSocketMessage) {
+func (p *playerState) SendMessage(msg *ws.Message) {
 	p.Conn.Tx <- msg
 }
 
 type gameState struct {
 	ID      uuid.UUID
 	Players map[net.Addr]*playerState
+
+	Phase        GamePhase
+	PhaseTimer   <-chan time.Time
+	RoundCounter int
+	LocationURL  string
+	Location     *Location
 }
 
 func newGameState(id uuid.UUID) *gameState {
 	return &gameState{
 		ID:      id,
 		Players: make(map[net.Addr]*playerState),
+		Phase:   GamePhaseWaitingForPlayers,
 	}
 }
 
 type gameMessenger struct {
-	NewConn   chan *webSocketConnection
+	NewConn   chan *ws.Connection
 	PlayerMsg chan *struct {
 		ply *playerState
-		msg *webSocketMessage
+		msg *ws.Message
 	}
 	PlayerLeft chan *playerState
 }
 
 func newGameMessenger() *gameMessenger {
 	return &gameMessenger{
-		NewConn: make(chan *webSocketConnection),
+		NewConn: make(chan *ws.Connection),
 		PlayerMsg: make(chan *struct {
 			ply *playerState
-			msg *webSocketMessage
+			msg *ws.Message
 		}),
 		PlayerLeft: make(chan *playerState),
 	}
@@ -79,14 +90,27 @@ out:
 	for {
 		select {
 		case msg := <-msg.PlayerMsg:
-			addr := msg.ply.Conn.conn.RemoteAddr()
-			log.Printf("[%s] %s: %v", s.ID, addr, *msg.msg)
+			if err := s.HandlePlayerMessage(msg.ply, msg.msg); err != nil {
+				// TODO: send a WebSocket close with the error
+				addr := msg.ply.Conn.Conn.RemoteAddr()
+				log.Printf("[%s] Error reading from %s: %v", s.ID, addr, err)
+			}
 		case ply := <-msg.PlayerLeft:
 			s.ForgetPlayer(ply)
+
+			if len(s.Players) <= 0 {
+				break out
+			}
 		case conn := <-msg.NewConn:
 			s.AddPlayer(conn, msg)
-		case <-time.After(15 * time.Second):
-			break out
+
+			if s.Phase == GamePhaseWaitingForPlayers {
+				s.StartRound()
+			}
+		case <-s.PhaseTimer:
+			if s.NextGamePhase() {
+				break out
+			}
 		}
 	}
 
@@ -98,18 +122,48 @@ out:
 	}
 }
 
-func (s *gameState) AddPlayer(conn *webSocketConnection, msg *gameMessenger) {
-	addr := conn.conn.RemoteAddr()
+func (s *gameState) HandlePlayerMessage(ply *playerState, m *ws.Message) error {
+	addr := ply.Conn.Conn.RemoteAddr()
+	log.Printf("[%s] %s: %v", s.ID, addr, *m)
+	switch m.Type {
+	case "GUESS":
+		var guess MessageGuess
+		if err := json.Unmarshal(m.Data, &guess); err != nil {
+			return err
+		}
+
+		s.HandlePlayerGuess(ply, &guess)
+	}
+
+	return nil
+}
+
+// Broadcasts the WebSocket message m to all connected players.
+//
+// f is an optional function that can be used to filter out certain players;
+// return false to not send to that player.
+func (s *gameState) BroadcastMessage(m *ws.Message, f func(*playerState) bool) {
+	for _, ply := range s.Players {
+		if f != nil && !f(ply) {
+			continue
+		}
+
+		ply.SendMessage(m)
+	}
+}
+
+func (s *gameState) AddPlayer(conn *ws.Connection, msg *gameMessenger) {
+	addr := conn.Conn.RemoteAddr()
 	ply := newPlayerState(conn)
 	s.Players[addr] = ply
 	go ply.Loop(msg)
 
-	ply.SendMessage(newWebSocketMessageAssert("JOINED", nil))
+	ply.SendMessage(ws.NewMessageAssert("JOINED", nil))
 	log.Printf("[%s] %s joined the game", s.ID, addr)
 }
 
 func (s *gameState) ForgetPlayer(ply *playerState) {
-	addr := ply.Conn.conn.RemoteAddr()
+	addr := ply.Conn.Conn.RemoteAddr()
 	delete(s.Players, addr)
 	ply.Close()
 	log.Printf("[%s] %s left the game", s.ID, addr)
@@ -145,7 +199,7 @@ func (h *gameHub) ForgetGame(id uuid.UUID) {
 	h.m.Delete(id)
 }
 
-func gamesAddRoutes(eng *gin.Engine) {
+func AddRoutes(eng *gin.Engine) {
 	hub := newGameHub()
 
 	games := eng.Group("/games").Use(auth.AuthorizeMiddleware())
@@ -173,7 +227,7 @@ func gamesAddRoutes(eng *gin.Engine) {
 			return
 		}
 
-		conn, err := openWebSocket(ctx)
+		conn, err := ws.Open(ctx)
 		if err != nil {
 			log.Printf("Failed to open WebSocket: %v", err)
 			return

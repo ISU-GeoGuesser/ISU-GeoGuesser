@@ -1,45 +1,48 @@
-package main
+package websocket
 
 import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/posener/wstest"
+	"github.com/stretchr/testify/require"
 )
 
-type webSocketMessage struct {
+type Message struct {
 	Type string          `json:"t"`
 	Data json.RawMessage `json:"d,omitempty"`
 }
 
-func newWebSocketMessage(t string, d any) (*webSocketMessage, error) {
+func NewMessage(t string, d any) (*Message, error) {
 	j, err := json.Marshal(d)
 	if err != nil {
 		return nil, err
 	}
 
-	msg := &webSocketMessage{
+	msg := &Message{
 		Type: t,
 		Data: j,
 	}
 	return msg, nil
 }
 
-func newWebSocketMessageAssert(t string, d any) *webSocketMessage {
-	if msg, err := newWebSocketMessage(t, d); err != nil {
+func NewMessageAssert(t string, d any) *Message {
+	if msg, err := NewMessage(t, d); err != nil {
 		panic(err)
 	} else {
 		return msg
 	}
 }
 
-type webSocketConnection struct {
-	conn *websocket.Conn
-	Tx   chan *webSocketMessage
-	Rx   chan *webSocketMessage
+type Connection struct {
+	Conn *websocket.Conn
+	Tx   chan *Message
+	Rx   chan *Message
 }
 
 var upgrader = websocket.Upgrader{
@@ -48,19 +51,19 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func (c *webSocketConnection) Close() {
+func (c *Connection) Close() {
 	close(c.Tx)
 }
 
-func (c *webSocketConnection) loop() {
-	defer c.conn.Close()
+func (c *Connection) loop() {
+	defer c.Conn.Close()
 
 	done := make(chan struct{})
 	go func() {
 		defer close(c.Rx)
 		for {
-			var rxMsg webSocketMessage
-			if err := c.conn.ReadJSON(&rxMsg); err != nil {
+			var rxMsg Message
+			if err := c.Conn.ReadJSON(&rxMsg); err != nil {
 				log.Printf("WebSocket read failure: %v", err)
 				close(done)
 				break
@@ -77,11 +80,11 @@ out:
 			break out
 		case txMsg, more := <-c.Tx:
 			if !more {
-				webSocketSendClose(c.conn, "")
+				SendClose(c.Conn, "")
 				break out
 			}
 
-			if err := c.conn.WriteJSON(txMsg); err != nil {
+			if err := c.Conn.WriteJSON(txMsg); err != nil {
 				log.Printf("WebSocket write failure: %v", err)
 				break out
 			}
@@ -89,22 +92,30 @@ out:
 	}
 }
 
-func openWebSocket(c *gin.Context) (*webSocketConnection, error) {
+func Open(c *gin.Context) (*Connection, error) {
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	wrapper := &webSocketConnection{
-		conn: conn,
-		Tx:   make(chan *webSocketMessage),
-		Rx:   make(chan *webSocketMessage),
+	wrapper := &Connection{
+		Conn: conn,
+		Tx:   make(chan *Message),
+		Rx:   make(chan *Message),
 	}
 	go wrapper.loop()
 	return wrapper, nil
 }
 
-func webSocketSendClose(c *websocket.Conn, text string) error {
+func OpenTest(t *testing.T, h http.Handler, url string) *websocket.Conn {
+	dialer := wstest.NewDialer(h)
+	conn, resp, err := dialer.Dial("ws://test.net"+url, nil)
+	require.Nil(t, err)
+	require.Equal(t, http.StatusSwitchingProtocols, resp.StatusCode)
+	return conn
+}
+
+func SendClose(c *websocket.Conn, text string) error {
 	return c.WriteControl(
 		websocket.CloseMessage,
 		websocket.FormatCloseMessage(websocket.CloseNormalClosure, text),
