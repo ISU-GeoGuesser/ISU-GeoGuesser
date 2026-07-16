@@ -8,13 +8,19 @@ import (
 )
 
 func uploadLocation(c *gin.Context) {
+	name := c.PostForm("name")
+	if name == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Location name is required"})
+		return
+	}
+
 	file, err := c.FormFile("image")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "No image received: " + err.Error()})
 		return
 	}
 
-	dst := "./images/" + file.Filename
+	dst := IMAGE_DIR + file.Filename
 	if err := c.SaveUploadedFile(file, dst); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file"})
 		return
@@ -28,6 +34,7 @@ func uploadLocation(c *gin.Context) {
 
 	response := gin.H{
 		"message":  "Image uploaded successfully",
+		"name":     name,
 		"filename": file.Filename,
 		"size":     file.Size,
 	}
@@ -39,14 +46,14 @@ func uploadLocation(c *gin.Context) {
 		response["longitude"] = lon
 	}
 
-	// _, err = db.Exec(
-	// 	"INSERT INTO locations (filename, latitude, longitude) VALUES ($1, $2, $3)",
-	// 	file.Filename, lat, lon,
-	// )
-	// if err != nil {
-	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save location"})
-	// 	return
-	// }
+	_, err = db.Exec(
+		INSERT_LOCATION,
+		file.Filename, name, lat, lon,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save location"})
+		return
+	}
 
 	c.JSON(http.StatusOK, response)
 }

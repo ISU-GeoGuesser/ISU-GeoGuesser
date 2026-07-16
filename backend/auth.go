@@ -1,131 +1,110 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/github"
 )
 
-type Authenticator interface {
-	Middleware() gin.HandlerFunc
+type RegisterRequest struct {
+	Username string `form:"username" binding:"required,min=8,max=32,alphanum"`
+	Password string `form:"password" binding:"required,min=8"`
+	Email    string `form:"email" binding:"required,email"`
 }
 
-// --- GitHub OAuth authenticato ---
-
-type GitHubAuthenticator struct {
-	oauthConfig   *oauth2.Config
-	sessionSecret string
-
-	// replace with database
-	sessions map[string]GitHubUser
-
-	// organization string
-}
-
-type GitHubUser struct {
-	Login string `json:"login"`
-	Email string `json:"email"`
-	ID    int    `json:"id"`
-}
-
-func NewGitHubAuthenticator(clientID, clientSecret, sessionSecret string) *GitHubAuthenticator {
-	return &GitHubAuthenticator{
-		oauthConfig: &oauth2.Config{
-			ClientID:     clientID,
-			ClientSecret: clientSecret,
-			Scopes:       []string{"user:email", "read:org"},
-			Endpoint:     github.Endpoint,
-			RedirectURL:  "http://localhost:8080/auth/github/callback",
-		},
-		sessionSecret: sessionSecret,
-		sessions:      make(map[string]GitHubUser),
-		// organization:  organizationName,
+func register(c *gin.Context) {
+	var req RegisterRequest
+	if err := c.ShouldBind(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid username or password"})
+		return
 	}
-}
 
-// func (a *GitHubAuthenticator) isOrgMember(client *http.Client, username string) (bool, error) {
-// 	url := fmt.Sprintf("https://api.github.com/orgs/%s/members/%s", a.organization, username)
-// 	resp, err := client.Get(url)
-// 	if err != nil {
-// 		return false, err
-// 	}
-// 	resp.Body.Close()
-
-// 	return resp.StatusCode == http.StatusNoContent, nil
-// }
-
-func (a *GitHubAuthenticator) Middleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		token := c.GetHeader("Authorization")
-		if token == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing Authorization header"})
-			return
-		}
-
-		user, ok := a.sessions[token]
-		if !ok {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired session"})
-			return
-		}
-
-		c.Set("github_user", user)
-		c.Next()
+	// check if username or email already exists
+	var exists bool
+	err := db.QueryRow(QUERY_USER_EXISTS, req.Username, req.Email).Scan(&exists)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+		return
 	}
+	if exists {
+		c.JSON(http.StatusConflict, gin.H{"error": "Username or email already taken"})
+		return
+	}
+
+	// has password
+	hashedPassword, err := hash_password(req.Password)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+		return
+	}
+
+	// store user, email, and hashed password
+	_, err = db.Exec(INSERT_USER_PSWRD, req.Username, req.Email, hashedPassword)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"message": "Account created"})
 }
 
-func (a *GitHubAuthenticator) RegisterRoutes(r *gin.Engine) {
-	r.GET("/auth/github/login", func(c *gin.Context) {
-		url := a.oauthConfig.AuthCodeURL("state", oauth2.AccessTypeOnline)
-		c.Redirect(http.StatusTemporaryRedirect, url)
-	})
+func login(c *gin.Context) {
+	username := c.PostForm("username")
+	password := c.PostForm("password")
 
-	r.GET("/auth/github/callback", func(c *gin.Context) {
-		code := c.Query("code")
-		if code == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "missing code"})
-			return
-		}
+	if username == "" || password == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid username or password"})
+		return
+	}
 
-		token, err := a.oauthConfig.Exchange(context.Background(), code)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to exchange token"})
-			return
-		}
+	// get hashed password from db
+	var hashedPassword string
+	err := db.QueryRow(QUERY_USERS_PSWRD, username).Scan(&hashedPassword)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
+		return
+	}
 
-		client := a.oauthConfig.Client(context.Background(), token)
-		resp, err := client.Get("https://api.github.com/user")
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch user"})
-			return
-		}
-		defer resp.Body.Close()
+	if !checkPasswordHash(password, hashedPassword) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
+		return
+	}
 
-		var user GitHubUser
-		if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to decode user"})
-			return
-		}
+	sessionToken := generateToken(32)
+	csrfToken := generateToken(32)
 
-		// isMember, err := a.isOrgMember(a.oauthConfig.Client(context.Background(), token), user.Login)
-		// if err != nil {
-		// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check org membership"})
-		// 	return
-		// }
-		// if !isMember {
-		// 	c.JSON(http.StatusForbidden, gin.H{"error": fmt.Sprintf("you must be a member of %s", a.organization)})
-		// 	return
-		// }
+	// store tokens in db
+	_, err = db.Exec(SET_SESSION_TOKEN, sessionToken, csrfToken, username)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+		return
+	}
 
-		a.sessions[token.AccessToken] = user
+	//                                       maxAge, path, domain, secure, httpOnly
+	c.SetCookie("session_token", sessionToken, 86400, "/", "", true, true)
+	c.SetCookie("csrf_token", csrfToken, 86400, "/", "", true, false)
 
-		c.JSON(http.StatusOK, gin.H{
-			"token":    token.AccessToken,
-			"username": user.Login,
-			"email":    user.Email,
-		})
-	})
+	c.JSON(http.StatusOK, gin.H{"message": "Logged in"})
+}
+
+func logout(c *gin.Context) {
+	if err := authorize(c); err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	st, _ := c.Cookie("session_token")
+
+	// clear tokens from db
+	_, err := db.Exec(CLR_SESSION_TOKEN, st)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+		return
+	}
+
+	// clear session cookies
+	c.SetCookie("session_token", "", -1, "/", "", true, true)
+	c.SetCookie("csrf_token", "", -1, "/", "", true, false)
+
+	c.JSON(http.StatusOK, gin.H{"message": "Logged out"})
 }
