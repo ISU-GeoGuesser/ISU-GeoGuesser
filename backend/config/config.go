@@ -1,5 +1,5 @@
 package config
 
 const (
-	IMAGE_DIR = "./public/images"
+	IMAGE_DIR = "./public/images/"
 )
