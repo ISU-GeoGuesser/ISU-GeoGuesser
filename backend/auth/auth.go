@@ -1,9 +1,11 @@
 package auth
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/lib/pq"
 
 	db "isu-geoguesser/database"
 )
@@ -21,19 +23,7 @@ func register(c *gin.Context) {
 		return
 	}
 
-	// check if username or email already exists
-	var exists bool
-	err := db.DB.QueryRow(db.QUERY_USER_EXISTS, req.Username, req.Email).Scan(&exists)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
-		return
-	}
-	if exists {
-		c.JSON(http.StatusConflict, gin.H{"error": "Username or email already taken"})
-		return
-	}
-
-	// has password
+	// hash password
 	hashedPassword, err := hash_password(req.Password)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
@@ -43,6 +33,11 @@ func register(c *gin.Context) {
 	// store user, email, and hashed password
 	_, err = db.DB.Exec(db.INSERT_USER_PSWRD, req.Username, req.Email, hashedPassword)
 	if err != nil {
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
+			c.JSON(http.StatusConflict, gin.H{"error": "Username or email already taken"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
 		return
 	}
