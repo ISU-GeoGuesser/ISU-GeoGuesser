@@ -1,10 +1,13 @@
-package main
+package games
 
 import (
 	"log"
 	"maps"
 	"math"
 	"time"
+
+	utils "isu-geoguesser/utils"
+	ws "isu-geoguesser/websocket"
 )
 
 type Location struct {
@@ -124,7 +127,7 @@ func (s *gameState) StartRound() {
 	s.LocationURL = url
 	s.Location = loc
 
-	msg := newWebSocketMessageAssert("ROUND_STARTED", &MessageRoundStarted{
+	msg := ws.NewMessageAssert("ROUND_STARTED", &MessageRoundStarted{
 		ImageUrl: url,
 		Duration: nil,
 		Counter:  s.RoundCounter,
@@ -141,12 +144,12 @@ var campusBottomLeft = Location{40.502612, -89.000830}
 var campusTopRight = Location{40.520390, -88.982966}
 var campusHeight = campusTopRight.Latitude - campusBottomLeft.Latitude
 var campusWidth = campusTopRight.Longitude - campusBottomLeft.Longitude
-var campusMaxDistSqr = Squaref(campusHeight*0.5) + Squaref(campusWidth*0.5)
+var campusMaxDistSqr = utils.Squaref(campusHeight*0.5) + utils.Squaref(campusWidth*0.5)
 
 func calcGuessScore(ref *Location, guess *Location) int {
 	diffLat := guess.Latitude - ref.Latitude
 	diffLong := guess.Longitude - ref.Longitude
-	distSqr := Squaref(diffLat) + Squaref(diffLong)
+	distSqr := utils.Squaref(diffLat) + utils.Squaref(diffLong)
 
 	frac := 1.0 - math.Min(1.0, distSqr/campusMaxDistSqr)
 	return int(math.Ceil(frac * 5000))
@@ -163,7 +166,7 @@ func (s *gameState) EndRound() {
 			score = calcGuessScore(s.Location, ply.Guess)
 		}
 
-		msg := newWebSocketMessageAssert("ROUND_OVER", &MessageRoundOver{
+		msg := ws.NewMessageAssert("ROUND_OVER", &MessageRoundOver{
 			Score:    score,
 			Location: s.Location,
 		})
@@ -182,12 +185,12 @@ func (s *gameState) HandlePlayerGuess(ply *playerState, m *MessageGuess) {
 
 	// TODO: this can probably be replaced by a "GUESSED" message broadcast to
 	// everyone when a player makes a guess
-	ply.SendMessage(newWebSocketMessageAssert("GUESS", success))
+	ply.SendMessage(ws.NewMessageAssert("GUESS", success))
 
 	// if every player guessed, we advance the round early
 	if s.Phase == GamePhaseRound {
 		madeGuess := func(p *playerState) bool { return p.Guess != nil }
-		if All(maps.Values(s.Players), madeGuess) {
+		if utils.All(maps.Values(s.Players), madeGuess) {
 			s.EndRound()
 		}
 	}

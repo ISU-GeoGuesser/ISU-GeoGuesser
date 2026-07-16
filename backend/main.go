@@ -8,6 +8,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
+
+	games "isu-geoguesser/games"
 )
 
 var db *sql.DB
@@ -33,7 +35,7 @@ func main() {
 		locations.POST("", uploadLocation)
 	}
 
-	gamesAddRoutes(r)
+	games.AddRoutes(r)
 
 	if err := r.Run(":3000"); err != nil {
 		log.Fatalf("failed to run server: %v", err)
