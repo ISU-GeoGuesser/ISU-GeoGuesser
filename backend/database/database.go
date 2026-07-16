@@ -1,8 +1,29 @@
-package main
+package database
 
-const (
-	IMAGE_DIR = "./public/images"
+import (
+	"context"
+	"database/sql"
+	"log"
+	"os"
+
+	"gocloud.dev/postgres"
 )
+
+var DB *sql.DB
+
+func Open() {
+	ctx := context.Background()
+	db, err := postgres.Open(ctx, os.Getenv("DATABASE_URL"))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	DB = db
+}
+
+func Close() {
+	DB.Close()
+}
 
 // SQL Code
 const (

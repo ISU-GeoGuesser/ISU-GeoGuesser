@@ -5,6 +5,9 @@ import (
 
 	gometadata "github.com/FlavioCFOliveira/GoMetadata"
 	"github.com/gin-gonic/gin"
+
+	"isu-geoguesser/config"
+	db "isu-geoguesser/database"
 )
 
 func uploadLocation(c *gin.Context) {
@@ -20,7 +23,7 @@ func uploadLocation(c *gin.Context) {
 		return
 	}
 
-	dst := IMAGE_DIR + file.Filename
+	dst := config.IMAGE_DIR + file.Filename
 	if err := c.SaveUploadedFile(file, dst); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file"})
 		return
@@ -46,8 +49,8 @@ func uploadLocation(c *gin.Context) {
 		response["longitude"] = lon
 	}
 
-	_, err = db.Exec(
-		INSERT_LOCATION,
+	_, err = db.DB.Exec(
+		db.INSERT_LOCATION,
 		file.Filename, name, lat, lon,
 	)
 	if err != nil {

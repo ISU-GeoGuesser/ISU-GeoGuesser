@@ -1,9 +1,11 @@
-package main
+package auth
 
 import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
+	db "isu-geoguesser/database"
 )
 
 type RegisterRequest struct {
@@ -21,7 +23,7 @@ func register(c *gin.Context) {
 
 	// check if username or email already exists
 	var exists bool
-	err := db.QueryRow(QUERY_USER_EXISTS, req.Username, req.Email).Scan(&exists)
+	err := db.DB.QueryRow(db.QUERY_USER_EXISTS, req.Username, req.Email).Scan(&exists)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
 		return
@@ -39,7 +41,7 @@ func register(c *gin.Context) {
 	}
 
 	// store user, email, and hashed password
-	_, err = db.Exec(INSERT_USER_PSWRD, req.Username, req.Email, hashedPassword)
+	_, err = db.DB.Exec(db.INSERT_USER_PSWRD, req.Username, req.Email, hashedPassword)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
 		return
@@ -59,7 +61,7 @@ func login(c *gin.Context) {
 
 	// get hashed password from db
 	var hashedPassword string
-	err := db.QueryRow(QUERY_USERS_PSWRD, username).Scan(&hashedPassword)
+	err := db.DB.QueryRow(db.QUERY_USERS_PSWRD, username).Scan(&hashedPassword)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
 		return
@@ -74,7 +76,7 @@ func login(c *gin.Context) {
 	csrfToken := generateToken(32)
 
 	// store tokens in db
-	_, err = db.Exec(SET_SESSION_TOKEN, sessionToken, csrfToken, username)
+	_, err = db.DB.Exec(db.SET_SESSION_TOKEN, sessionToken, csrfToken, username)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
 		return
@@ -96,7 +98,7 @@ func logout(c *gin.Context) {
 	st, _ := c.Cookie("session_token")
 
 	// clear tokens from db
-	_, err := db.Exec(CLR_SESSION_TOKEN, st)
+	_, err := db.DB.Exec(db.CLR_SESSION_TOKEN, st)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
 		return
@@ -107,4 +109,10 @@ func logout(c *gin.Context) {
 	c.SetCookie("csrf_token", "", -1, "/", "", true, false)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Logged out"})
+}
+
+func AddRoutes(r *gin.Engine) {
+	r.POST("/register", register)
+	r.POST("/login", login)
+	r.POST("/logout", logout)
 }

@@ -1,18 +1,15 @@
 package main
 
 import (
-	"context"
-	"database/sql"
 	"log"
-	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
-	"gocloud.dev/postgres"
-)
 
-var db *sql.DB
+	"isu-geoguesser/auth"
+	db "isu-geoguesser/database"
+)
 
 func main() {
 	// load environment file
@@ -30,22 +27,16 @@ func main() {
 
 	// -----------------------------
 	// -- open database (postgre) --
-	ctx := context.Background()
-	db, err := postgres.Open(ctx, os.Getenv("DATABASE_URL"))
-	if err != nil {
-		log.Fatal(err)
-	}
+	db.Open()
 	defer db.Close()
 
 	// ---------------
 	// -- gin stuff --
 	r := gin.Default()
 
-	r.POST("/register", register)
-	r.POST("/login", login)
-	r.POST("/logout", logout)
+	auth.AddRoutes(r)
 
-	locations := r.Group("/locations").Use(authorizeMiddleware())
+	locations := r.Group("/locations").Use(auth.AuthorizeMiddleware())
 	{
 		locations.POST("", uploadLocation)
 	}

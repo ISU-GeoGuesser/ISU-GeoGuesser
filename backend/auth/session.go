@@ -1,4 +1,4 @@
-package main
+package auth
 
 import (
 	"database/sql"
@@ -6,6 +6,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
+	db "isu-geoguesser/database"
 )
 
 var auth_err = errors.New("Unauthorized")
@@ -25,7 +27,7 @@ func authorize(c *gin.Context) error {
 
 	// get tokens from db by session token
 	var dbSession, dbCSRF string
-	err = db.QueryRow(QUERT_SESSION_TKN, st).Scan(&dbSession, &dbCSRF)
+	err = db.DB.QueryRow(db.QUERT_SESSION_TKN, st).Scan(&dbSession, &dbCSRF)
 	if err == sql.ErrNoRows {
 		return auth_err
 	}
@@ -40,7 +42,7 @@ func authorize(c *gin.Context) error {
 	return nil
 }
 
-func authorizeMiddleware() gin.HandlerFunc {
+func AuthorizeMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if err := authorize(c); err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
