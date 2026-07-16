@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"isu-geoguesser/auth"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -146,7 +148,7 @@ func (h *gameHub) ForgetGame(id uuid.UUID) {
 func gamesAddRoutes(eng *gin.Engine) {
 	hub := newGameHub()
 
-	games := eng.Group("/games")
+	games := eng.Group("/games").Use(auth.AuthorizeMiddleware())
 	games.GET("/start", func(ctx *gin.Context) {
 		id := hub.NewGame()
 		ctx.JSON(http.StatusOK, gin.H{

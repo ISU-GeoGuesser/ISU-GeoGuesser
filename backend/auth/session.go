@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"crypto/subtle"
 	"database/sql"
 	"errors"
 	"net/http"
@@ -35,7 +36,8 @@ func authorize(c *gin.Context) error {
 		return err
 	}
 
-	if st != dbSession || csrf != dbCSRF {
+	if subtle.ConstantTimeCompare([]byte(st), []byte(dbSession)) != 1 ||
+		subtle.ConstantTimeCompare([]byte(csrf), []byte(dbCSRF)) != 1 {
 		return auth_err
 	}
 
