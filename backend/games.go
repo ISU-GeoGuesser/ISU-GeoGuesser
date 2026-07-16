@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"net"
 	"net/http"
@@ -12,7 +13,9 @@ import (
 )
 
 type playerState struct {
-	Conn *webSocketConnection
+	Conn       *webSocketConnection
+	Guess      *Location
+	TotalScore int
 }
 
 func newPlayerState(conn *webSocketConnection) *playerState {
@@ -41,12 +44,19 @@ func (p *playerState) SendMessage(msg *webSocketMessage) {
 type gameState struct {
 	ID      uuid.UUID
 	Players map[net.Addr]*playerState
+
+	Phase        GamePhase
+	PhaseTimer   <-chan time.Time
+	RoundCounter int
+	LocationURL  string
+	Location     *Location
 }
 
 func newGameState(id uuid.UUID) *gameState {
 	return &gameState{
 		ID:      id,
 		Players: make(map[net.Addr]*playerState),
+		Phase:   GamePhaseWaitingForPlayers,
 	}
 }
 
@@ -77,14 +87,27 @@ out:
 	for {
 		select {
 		case msg := <-msg.PlayerMsg:
-			addr := msg.ply.Conn.conn.RemoteAddr()
-			log.Printf("[%s] %s: %v", s.ID, addr, *msg.msg)
+			if err := s.HandlePlayerMessage(msg.ply, msg.msg); err != nil {
+				// TODO: send a WebSocket close with the error
+				addr := msg.ply.Conn.conn.RemoteAddr()
+				log.Printf("[%s] Error reading from %s: %v", s.ID, addr, err)
+			}
 		case ply := <-msg.PlayerLeft:
 			s.ForgetPlayer(ply)
+
+			if len(s.Players) <= 0 {
+				break out
+			}
 		case conn := <-msg.NewConn:
 			s.AddPlayer(conn, msg)
-		case <-time.After(15 * time.Second):
-			break out
+
+			if s.Phase == GamePhaseWaitingForPlayers {
+				s.StartRound()
+			}
+		case <-s.PhaseTimer:
+			if s.NextGamePhase() {
+				break out
+			}
 		}
 	}
 
@@ -93,6 +116,36 @@ out:
 
 	for _, ply := range s.Players {
 		s.ForgetPlayer(ply)
+	}
+}
+
+func (s *gameState) HandlePlayerMessage(ply *playerState, m *webSocketMessage) error {
+	addr := ply.Conn.conn.RemoteAddr()
+	log.Printf("[%s] %s: %v", s.ID, addr, *m)
+	switch m.Type {
+	case "GUESS":
+		var guess MessageGuess
+		if err := json.Unmarshal(m.Data, &guess); err != nil {
+			return err
+		}
+
+		s.HandlePlayerGuess(ply, &guess)
+	}
+
+	return nil
+}
+
+// Broadcasts the WebSocket message m to all connected players.
+//
+// f is an optional function that can be used to filter out certain players;
+// return false to not send to that player.
+func (s *gameState) BroadcastMessage(m *webSocketMessage, f func(*playerState) bool) {
+	for _, ply := range s.Players {
+		if f != nil && !f(ply) {
+			continue
+		}
+
+		ply.SendMessage(m)
 	}
 }
 
