@@ -10,7 +10,7 @@ import (
 	games "isu-geoguesser/games"
 
 	"isu-geoguesser/auth"
-	db "isu-geoguesser/database"
+	// db "isu-geoguesser/database"
 )
 
 func main() {
@@ -27,10 +27,9 @@ func main() {
 	// 	// os.Getenv("GITHUB_ORG_NAME"),
 	// )
 
-	// -----------------------------
-	// -- open database (postgre) --
-	db.Open()
-	defer db.Close()
+	// open database (postgre)
+	// db.Open()
+	// defer db.Close()
 
 	// ---------------
 	// -- gin stuff --

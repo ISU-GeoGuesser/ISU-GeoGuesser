@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"isu-geoguesser/config"
-	db "isu-geoguesser/database"
+	// db "isu-geoguesser/database"
 )
 
 func uploadLocation(c *gin.Context) {
@@ -49,14 +49,14 @@ func uploadLocation(c *gin.Context) {
 		response["longitude"] = lon
 	}
 
-	_, err = db.DB.Exec(
-		db.INSERT_LOCATION,
-		file.Filename, name, lat, lon,
-	)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save location"})
-		return
-	}
+	// _, err = db.DB.Exec(
+	// 	db.INSERT_LOCATION,
+	// 	file.Filename, name, lat, lon,
+	// )
+	// if err != nil {
+	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save location"})
+	// 	return
+	// }
 
 	c.JSON(http.StatusOK, response)
 }

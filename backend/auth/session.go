@@ -2,16 +2,36 @@ package auth
 
 import (
 	"crypto/subtle"
-	"database/sql"
 	"errors"
 	"net/http"
+	"sync"
 
 	"github.com/gin-gonic/gin"
-
-	db "isu-geoguesser/database"
 )
 
 var auth_err = errors.New("Unauthorized")
+
+type tokenEntry struct {
+	sessionToken string
+	csrfToken    string
+}
+
+var (
+	tokenStoreMu sync.RWMutex
+	tokenStore   = make(map[string]tokenEntry) // keyed by session token
+)
+
+func storeTokens(sessionToken, csrfToken string) {
+	tokenStoreMu.Lock()
+	defer tokenStoreMu.Unlock()
+	tokenStore[sessionToken] = tokenEntry{sessionToken: sessionToken, csrfToken: csrfToken}
+}
+
+func deleteToken(sessionToken string) {
+	tokenStoreMu.Lock()
+	defer tokenStoreMu.Unlock()
+	delete(tokenStore, sessionToken)
+}
 
 func authorize(c *gin.Context) error {
 	// get session token from cookies
@@ -26,18 +46,16 @@ func authorize(c *gin.Context) error {
 		return auth_err
 	}
 
-	// get tokens from db by session token
-	var dbSession, dbCSRF string
-	err = db.DB.QueryRow(db.QUERT_SESSION_TKN, st).Scan(&dbSession, &dbCSRF)
-	if err == sql.ErrNoRows {
+	// look up tokens in memory
+	tokenStoreMu.RLock()
+	entry, ok := tokenStore[st]
+	tokenStoreMu.RUnlock()
+	if !ok {
 		return auth_err
 	}
-	if err != nil {
-		return err
-	}
 
-	if subtle.ConstantTimeCompare([]byte(st), []byte(dbSession)) != 1 ||
-		subtle.ConstantTimeCompare([]byte(csrf), []byte(dbCSRF)) != 1 {
+	if subtle.ConstantTimeCompare([]byte(st), []byte(entry.sessionToken)) != 1 ||
+		subtle.ConstantTimeCompare([]byte(csrf), []byte(entry.csrfToken)) != 1 {
 		return auth_err
 	}
 
