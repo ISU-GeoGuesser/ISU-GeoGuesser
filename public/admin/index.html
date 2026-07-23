@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin</title>
+    <script src="admin.js" defer></script>
+</head>
+<body>
+    <label for="image-uploader">Choose images to upload</label>
+    <input 
+        type="file" 
+        id="image-uploader" 
+        accept="image/*" 
+        multiple 
+    />
+    <div id="file-list"></div>
+    <button id="upload-btn" disabled>Upload</button>
+    <div id="status"></div>
+</body>
+</html>
