@@ -1,0 +1,119 @@
+/*@author: joe jankowicz*/
+:root {
+
+    --isuRed: #ce0e2d; 
+    --isuDarkRed: #a30a23; 
+
+}
+
+body {
+
+    margin: 0;
+    min-height: 100vh;
+    background-color: black;
+    color: white;
+    font-family: "Archivo", Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+}
+
+.card{
+
+    width: 540px;
+    padding: 45px;
+    text-align: center;
+    background-color: #211d1c;
+    border: 1px solid #4a4240;
+    border-radius: 25px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+
+}
+
+.smallTitle {
+
+    color: #b8b0ad;
+    font-size: 13px; 
+    font-weight: bold;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+
+}
+
+h1 {
+
+    font-size: 54px; 
+    margin: 0;
+    font-weight: 900;
+
+}
+
+.whiteText {
+
+    color: white; 
+
+}
+
+.redText {
+
+    color: var(--isuRed)
+
+}
+
+.gameDescription {
+
+    color: #d0cccc;
+    font-size: 18px;
+    line-height: 1.5;
+    margin: 20px auto 35px;
+    max-width: 400px;
+
+}
+
+.buttons {
+
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+
+}
+
+.buttons a {
+
+    text-decoration: none;
+    font-weight: bold;
+    padding: 14px 18px;
+    border-radius: 30px;
+    text-align: center;
+
+}
+
+.redButton {
+
+    background-color: var(--isuRed);
+    color: white; 
+
+}
+
+.redButton:hover {
+
+    background-color: var(--isuDarkRed);
+
+}
+
+.outlineButton {
+
+    background-color: transparent;
+    color: white;
+    border: 1px solid white;
+
+}
+
+.outlineButton:hover {
+
+    background-color: white;
+    color: #14100f;
+
+}
