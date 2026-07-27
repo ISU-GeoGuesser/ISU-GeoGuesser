@@ -59,7 +59,7 @@ uploadBtn.addEventListener('click', async () => {
             if (res.ok) {
                 results.push(`[OK]   ${files[i].name} → ${name}`);
             } else {
-                results.push(`[ERR]  ${files[i].name} — ${json.error || res.statusText}`);
+                results.push(`[ERR]  ${files[i].name} - ${json.error || res.statusText}`);
             }
         } catch (err) {
             results.push(`[ERR]  ${files[i].name} — ${err.message}`);
