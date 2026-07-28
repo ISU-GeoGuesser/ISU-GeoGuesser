@@ -4,12 +4,11 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Login</title>
-        <link rel="stylesheet" href="/css/styles.css">
         <script src="/auth/login/login.js" defer></script>
     </head>
     <body>
         <div class="card">
-            <form action="http://localhost:3000/login" method="POST">
+            <form>
                 <div>
                     <label for="username">Username</label>
                     <input type="text" id="username" name="username" required>
@@ -19,9 +18,8 @@
                     <input type="password" id="password" name="password" required>
                 </div>
                 <button type="submit">Login</button>
-                <p id="login-error" style="color:red;display:none;"></p>
+                <p id="login-error"></p>
             </form>
-            <p class="form-footer"> <a href="/auth/register">Register</a></p>
         </div>
     </body>
 </html>

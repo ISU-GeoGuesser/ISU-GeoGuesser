@@ -3,7 +3,9 @@ package main
 import (
 	"isu-geoguesser/auth"
 	"log"
+	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
@@ -36,13 +38,22 @@ func main() {
 	// -- gin stuff --
 	r := gin.Default()
 
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"https://dev.reggieguessr.com"},
+		AllowMethods:     []string{"GET", "POST"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-CSRF-Token"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
+
 	auth.AddRoutes(r)
 
-	// locations := r.Group("/locations").Use(auth.AuthorizeMiddleware())
-	// {
-	// 	locations.POST("", uploadLocation)
-	// }
-	r.POST("/locations", uploadLocation)
+	locations := r.Group("/locations").Use(auth.AuthorizeMiddleware())
+	{
+		locations.POST("", uploadLocation)
+	}
+	// r.POST("/locations", uploadLocation)
 
 	r.GET("leaderboard", getLeaderboard)
 

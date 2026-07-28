@@ -1,62 +1,104 @@
 package main
 
 import (
+	"image"
+	_ "image/jpeg"
+	_ "image/png"
+	"isu-geoguesser/config"
+	"log"
 	"net/http"
+	"os"
 
 	gometadata "github.com/FlavioCFOliveira/GoMetadata"
 	"github.com/gin-gonic/gin"
+	"github.com/ryanbekhen/go-webp"
 
-	"isu-geoguesser/config"
 	db "isu-geoguesser/database"
 )
 
 func uploadLocation(c *gin.Context) {
 	name := c.PostForm("name")
 	if name == "" {
+		log.Println("error: Location name is required")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Location name is required"})
 		return
 	}
 
-	file, err := c.FormFile("image")
+	fileHeader, err := c.FormFile("image")
 	if err != nil {
+		log.Println("error: No image received: ", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "No image received: " + err.Error()})
 		return
 	}
 
-	dst := config.IMAGE_DIR + file.Filename
-	if err := c.SaveUploadedFile(file, dst); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file"})
+	tmpDst := "./tmp/" + fileHeader.Filename
+	if err := c.SaveUploadedFile(fileHeader, tmpDst); err != nil {
+		log.Println("error: Failed to save uploaded file: ", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save uploaded file" + err.Error()})
 		return
 	}
 
-	m, err := gometadata.ReadFile(dst)
+	m, err := gometadata.ReadFile(tmpDst)
 	if err != nil {
+		log.Println("error: Failed to read metadata: ", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read metadata: " + err.Error()})
 		return
-	}
-
-	response := gin.H{
-		"message":  "Image uploaded successfully",
-		"name":     name,
-		"filename": file.Filename,
-		"size":     file.Size,
 	}
 
 	lat, lon := 0.0, 0.0
 	if gpsLat, gpsLon, ok := m.GPS(); ok {
 		lat, lon = gpsLat, gpsLon
-		response["latitude"] = lat
-		response["longitude"] = lon
+	}
+
+	file, err := os.Open(tmpDst)
+	if err != nil {
+		log.Println("error: Failed to open temporary file: ", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to open temporary file"})
+		return
+	}
+	defer file.Close()
+
+	img, _, err := image.Decode(file)
+	if err != nil {
+		log.Println("error: Failed to decode image: ", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode image: " + err.Error()})
+		return
+	}
+
+	output := config.IMAGE_DIR + fileHeader.Filename + ".webp"
+	outFile, err := os.Create(output)
+	if err != nil {
+		log.Println("error: Failed to create output file: ", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create output file: " + err.Error()})
+		return
+	}
+	defer outFile.Close()
+
+	err = webp.Encode(img, 75, outFile)
+	if err != nil {
+		log.Println("error: Failed to encode image to WebP: ", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to encode image to WebP: " + err.Error()})
+		return
 	}
 
 	_, err = db.DB.Exec(
 		db.INSERT_LOCATION,
-		file.Filename, name, lat, lon,
+		output, name, lat, lon,
 	)
 	if err != nil {
+		log.Println("error: Failed to save location: ", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save location"})
 		return
 	}
 
-	c.JSON(http.StatusOK, response)
+	fileInfo, err := os.Stat(output)
+	log.Println("Location uploaded successfully: ", name, "\nfile: ", output, "\ncoordinates: ", lat, lon, "\nsize: ", fileInfo.Size()/1024, "KB")
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":   "Image uploaded successfully",
+		"name":      name,
+		"filename":  output,
+		"latitude":  lat,
+		"longitude": lon,
+	})
 }

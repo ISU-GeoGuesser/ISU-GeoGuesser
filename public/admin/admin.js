@@ -50,13 +50,20 @@ uploadBtn.addEventListener('click', async () => {
         formData.append('image', files[i]);
 
         try {
+            const csrfToken = decodeURIComponent(document.cookie
+                .split('; ')
+                .find(row => row.startsWith('csrf_token='))
+                ?.split('=').slice(1).join('=') ?? '');
+
             const res = await fetch('https://api.reggieguessr.com/locations', {
                 method: 'POST',
                 body: formData,
                 credentials: 'include',
+                headers: { 'X-CSRF-Token': csrfToken ?? '' },
             });
             const json = await res.json();
             if (res.ok) {
+                console.log(json);
                 results.push(`[OK]   ${files[i].name} → ${name}`);
             } else {
                 results.push(`[ERR]  ${files[i].name} - ${json.error || res.statusText}`);
