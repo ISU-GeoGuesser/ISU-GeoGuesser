@@ -9,7 +9,7 @@ import (
 )
 
 func getLeaderboard(c *gin.Context) {
-	limit, err := strconv.Atoi(c.GetHeader("number_of_players"))
+	limit, err := strconv.Atoi(c.Query("number_of_players"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid number of players"})
 		return

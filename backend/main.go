@@ -1,6 +1,7 @@
 package main
 
 import (
+	"isu-geoguesser/auth"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -9,7 +10,6 @@ import (
 
 	games "isu-geoguesser/games"
 
-	"isu-geoguesser/auth"
 	db "isu-geoguesser/database"
 )
 
@@ -42,6 +42,8 @@ func main() {
 	{
 		locations.POST("", uploadLocation)
 	}
+
+	r.GET("leaderboard", getLeaderboard)
 
 	games.AddRoutes(r)
 
