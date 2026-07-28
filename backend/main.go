@@ -38,10 +38,11 @@ func main() {
 
 	auth.AddRoutes(r)
 
-	locations := r.Group("/locations").Use(auth.AuthorizeMiddleware())
-	{
-		locations.POST("", uploadLocation)
-	}
+	// locations := r.Group("/locations").Use(auth.AuthorizeMiddleware())
+	// {
+	// 	locations.POST("", uploadLocation)
+	// }
+	r.POST("/locations", uploadLocation)
 
 	r.GET("leaderboard", getLeaderboard)
 
