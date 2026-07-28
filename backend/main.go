@@ -1,6 +1,7 @@
 package main
 
 import (
+	"isu-geoguesser/auth"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -9,7 +10,6 @@ import (
 
 	games "isu-geoguesser/games"
 
-	"isu-geoguesser/auth"
 	db "isu-geoguesser/database"
 )
 
@@ -38,10 +38,11 @@ func main() {
 
 	auth.AddRoutes(r)
 
-	locations := r.Group("/locations").Use(auth.AuthorizeMiddleware())
-	{
-		locations.POST("", uploadLocation)
-	}
+	// locations := r.Group("/locations").Use(auth.AuthorizeMiddleware())
+	// {
+	// 	locations.POST("", uploadLocation)
+	// }
+	r.POST("/locations", uploadLocation)
 
 	games.AddRoutes(r)
 
