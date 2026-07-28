@@ -2,6 +2,7 @@ package main
 
 import (
 	db "isu-geoguesser/database"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -11,11 +12,13 @@ import (
 func getLeaderboard(c *gin.Context) {
 	limit, err := strconv.Atoi(c.Query("number_of_players"))
 	if err != nil {
+		log.Println("invalid number of players:", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid number of players"})
 		return
 	}
 	rows, err := db.GetTopPlayers(limit)
 	if err != nil {
+		log.Println("failed to get top players:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get top players"})
 		return
 	}
@@ -26,6 +29,7 @@ func getLeaderboard(c *gin.Context) {
 		var username string
 		var score int
 		if err := rows.Scan(&username, &score); err != nil {
+			log.Println("failed to scan top players:", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to scan top players"})
 			return
 		}
