@@ -2,6 +2,7 @@ package main
 
 import (
 	"isu-geoguesser/auth"
+	"isu-geoguesser/utils"
 	"log"
 	"time"
 
@@ -39,7 +40,7 @@ func main() {
 	r := gin.Default()
 
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"https://dev.reggieguessr.com"},
+		AllowOrigins:     []string{utils.GetEnvFatal("FRONTEND_DOMAIN")},
 		AllowMethods:     []string{"GET", "POST"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-CSRF-Token"},
 		ExposeHeaders:    []string{"Content-Length"},

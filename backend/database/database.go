@@ -3,8 +3,8 @@ package database
 import (
 	"context"
 	"database/sql"
+	"isu-geoguesser/utils"
 	"log"
-	"os"
 
 	"gocloud.dev/postgres"
 )
@@ -13,7 +13,7 @@ var DB *sql.DB
 
 func Open() {
 	ctx := context.Background()
-	db, err := postgres.Open(ctx, os.Getenv("DATABASE_URL"))
+	db, err := postgres.Open(ctx, utils.GetEnvFatal("DATABASE_URL"))
 	if err != nil {
 		log.Fatal(err)
 	}
