@@ -1,0 +1,203 @@
+:root {
+
+    --isuRed: #ce0e2d;
+    --isuDarkRed: #a30a23;
+    --darkBackground: #14100f;
+    --cardBackground: #211d1c;
+    --borderColor: #4a4240;
+    --softText: #c9c2bf;
+
+}
+
+body {
+
+    margin: 0;
+    min-height: 100vh;
+    background-color: var(--darkBackground);
+    color: white;
+    font-family: "Archivo", Arial, sans-serif;
+    overflow: hidden;
+
+}
+
+.roundPhoto {
+
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 1;
+
+}
+
+.darkOverlay {
+
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.35);
+    z-index: 2;
+
+}
+
+.topBar {
+
+    position: relative;
+    z-index: 3;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 25px 35px;
+
+}
+
+.topBar h2 {
+
+    margin: 0;
+    font-size: 30px;
+
+}
+
+.whiteText { 
+
+    color: white;
+
+}
+
+.redText {
+
+    color: var(--isuRed)
+
+}
+
+nav a {
+
+    color: white;
+    text-decoration: none;
+    margin-left: 20px;
+    font-weight: bold; 
+
+}
+
+nav a:hover {
+
+    color: var(--isuRed);
+
+}
+
+.gameInfo {
+
+    position: relative;
+    z-index: 3;
+    display: flex;
+    gap: 15px; 
+    margin-left: 35px;
+    margin-top: 10px;
+
+}
+
+.infoBox {
+
+    background-color: rgba(20,16,15,0.85);
+    border: 11px solid var(--borderColor);
+    border-radius: 15px;
+    padding: 15px 25px;
+    min-width: 110px;
+    text-align: center; 
+
+}
+
+.infoBox p {
+
+    margin: 0;
+    color: var(--softText);
+    font-size: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+
+}
+
+.infoBox h1 {
+
+    margin: 6px 0 0;
+    font-size: 28px;
+
+}
+
+.infoBox:nth-child(2) h1 {
+
+    color: var(--isuRed); 
+
+}
+
+/*map box*/
+
+.mapScreen {
+
+    position: fixed;
+    right: 35px;
+    bottom: 35px;
+    z-index: 3; 
+    width: 569px; /*map scale*/
+    background-color: rgba(35,31,30,0.92);
+    border: 1px solid var(--borderColor);
+    border-radius: 22px;
+    padding: 18px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.55);
+
+}
+
+.mapTitle {
+
+    margin: 0 0 10px;
+    color: var(--softText); 
+    font-size: 13px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+
+}
+
+/*leaflet plug-in*/
+
+#map {
+
+    height: 420px; /*map scale*/
+    border-radius: 16px;
+    border: 1px solid var(--borderColor);
+    background-color: #14100f;
+    background-image: linear-gradient(#302a28 1px, transparent 1px), linear-gradient(90deg, #302a28 1px, transparent 1px);
+    background-size: 32px 32px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: var(--softText);
+    font-weight: bold;
+    text-align: center;
+
+}
+
+.submitButton {
+
+    display: block;
+    margin-top: 15px;
+    padding: 14px;
+    background-color: var(--isuRed);
+    color: white;
+    text-align: center;
+    text-decoration: none;
+    font-weight: bold;
+    border-radius: 30px;
+
+}
+
+.submitButton:hover {
+
+    background-color: var(--isuDarkRed);
+
+}
