@@ -4,12 +4,14 @@ go 1.26.4
 
 require (
 	github.com/FlavioCFOliveira/GoMetadata v1.2.0
+	github.com/gin-contrib/cors v1.7.7
 	github.com/gin-gonic/gin v1.12.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.12.3
 	github.com/posener/wstest v1.2.0
+	github.com/ryanbekhen/go-webp v1.0.0
 	github.com/stretchr/testify v1.11.1
 	gocloud.dev v0.46.0
 	golang.org/x/crypto v0.49.0
@@ -49,7 +51,7 @@ require (
 	go.opentelemetry.io/otel v1.44.0 // indirect
 	go.opentelemetry.io/otel/metric v1.44.0 // indirect
 	go.opentelemetry.io/otel/trace v1.44.0 // indirect
-	golang.org/x/arch v0.22.0 // indirect
+	golang.org/x/arch v0.23.0 // indirect
 	golang.org/x/net v0.52.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.35.0 // indirect
