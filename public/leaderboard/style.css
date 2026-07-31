@@ -1,9 +1,13 @@
 .leader-board-table {
   border-collapse: collapse;
+  color: white;
+  border: 3px solid #ce0e2d; ;
 }
-
+h1 {
+    color: white;
+}
 td {
-  border: 5px solid black;
+  border: 5px solid #ce0e2d; ;
   padding: 10px 20px;
 }
 
@@ -18,6 +22,7 @@ html {
 
 body {
   display: flex;
+  background-color: black;
   flex-direction: column;
   align-items: center;
   min-height: 100vh;
