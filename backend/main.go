@@ -57,7 +57,7 @@ func main() {
 	// r.POST("/locations", uploadLocation)
 
 	r.GET("leaderboard", getLeaderboard)
-
+	r.Static("/images", "./public/images") // added this so images wont 404
 	games.AddRoutes(r)
 
 	if err := r.Run(":3000"); err != nil {

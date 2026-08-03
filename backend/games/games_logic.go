@@ -4,8 +4,10 @@ import (
 	"log"
 	"maps"
 	"math"
+	"path/filepath"
 	"time"
 
+	db "isu-geoguesser/database"
 	utils "isu-geoguesser/utils"
 	ws "isu-geoguesser/websocket"
 )
@@ -85,12 +87,16 @@ func (s *gameState) NextRoundTimer() <-chan time.Time {
 	}
 }
 
+// abe: no longer hard coded example
 // Returns a pair of image URL/GPS location
 func (s *gameState) NextRoundLocation() (string, *Location, error) {
-	// TODO: replace with database query/random selection
-	return "https://library.illinoisstate.edu/images/homepage/spotlight/milner-campus-entrance-680x284.jpg",
-		&Location{40.511937, -88.991451},
-		nil
+	filename, _, lat, lon, err := db.GetRandomLocation()
+	if err != nil {
+		return "", nil, err
+	}
+
+	imageURL := "/images/" + filepath.Base(filename)
+	return imageURL, &Location{lat, lon}, nil
 }
 
 // Called to advance the game state when the phase timer expires

@@ -29,6 +29,12 @@ func GetTopPlayers(limit int) (*sql.Rows, error) {
 	return DB.Query(QUERY_TOP_PLAYERS, limit)
 }
 
+// abe: added this to get random photo from photos db
+func GetRandomLocation() (filename, name string, lat, lon float64, err error) {
+	err = DB.QueryRow(QUERY_RANDOM_LOCATION).Scan(&filename, &name, &lat, &lon)
+	return
+}
+
 // SQL Code
 const (
 	QUERY_USER_EXISTS = "SELECT EXISTS(SELECT 1 FROM users WHERE username = $1 OR email = $2)"
@@ -39,5 +45,6 @@ const (
 	SET_SESSION_TOKEN = "UPDATE users SET session_token = $1, csrf_token = $2 WHERE username = $3"
 	CLR_SESSION_TOKEN = "UPDATE users SET session_token = '', csrf_token = '' WHERE session_token = $1"
 
-	INSERT_LOCATION = "INSERT INTO locations (filename, name, latitude, longitude) VALUES ($1, $2, $3, $4)"
+	INSERT_LOCATION       = "INSERT INTO locations (filename, name, latitude, longitude) VALUES ($1, $2, $3, $4)"
+	QUERY_RANDOM_LOCATION = "SELECT filename, name, latitude, longitude FROM locations ORDER BY RANDOM() LIMIT 1" // abe: sql code to get random photo
 )

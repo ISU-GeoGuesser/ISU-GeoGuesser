@@ -1,7 +1,13 @@
 async function loadLeaderboard() {
-  const response = await fetch("https://reggieguessr.com/leaderboard?number_of_players=5");
-  const data = await response.json();
-  console.log(data); 
+  let data;
+  try {
+    const response = await fetch("https://api.reggieguessr.com/leaderboard?number_of_players=5");
+    if (!response.ok) throw new Error(`status ${response.status}`);
+    data = await response.json();
+  } catch (err) {
+    console.error("Failed to load leaderboard:", err);
+    return;
+  }
 
   const table = document.querySelector("table");
 
