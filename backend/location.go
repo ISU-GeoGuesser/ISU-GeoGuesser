@@ -46,8 +46,13 @@ func uploadLocation(c *gin.Context) {
 	}
 
 	lat, lon := 0.0, 0.0
-	if gpsLat, gpsLon, ok := m.GPS(); ok {
-		lat, lon = gpsLat, gpsLon
+	if newLat, newLon, ok := m.GPS(); !ok {
+		log.Println("error: Image has no location metadata")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "image has no GPS metadata"})
+		return
+	} else {
+		lat = newLat
+		lon = newLon
 	}
 
 	file, err := os.Open(tmpDst)
