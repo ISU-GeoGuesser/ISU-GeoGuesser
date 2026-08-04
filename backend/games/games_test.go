@@ -9,9 +9,11 @@ import (
 	"testing"
 	"time"
 
+	"isu-geoguesser/database"
+	ws "isu-geoguesser/websocket"
+
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
-	ws "isu-geoguesser/websocket"
 )
 
 func testHTTPRequest(h http.Handler, method string, url string, body io.Reader) *httptest.ResponseRecorder {
@@ -22,6 +24,8 @@ func testHTTPRequest(h http.Handler, method string, url string, body io.Reader) 
 }
 
 func TestGamesStartJoinLeave(t *testing.T) {
+	database.Open()
+
 	r := gin.Default()
 	AddRoutes(r)
 
