@@ -85,20 +85,22 @@ submitButton.addEventListener("click", function() {
 });
 
 // Start a visual countdown. If duration is null the backend has no timer,
-// so we just display 60 but don't auto-advance (the backend drives rounds).
+// so we display infinity.
 function startTimer(duration) {
 
     clearInterval(timer);
-    timeLeft = (duration !== null && duration !== undefined) ? Math.round(duration) : 60;
-    timerText.textContent = timeLeft;
 
-    if (duration === null || duration === undefined) {
+    if (!duration) {
+        timerText.textContent = "\u221E";
         return;
+    } else {
+        timeLeft = duration;
+        timerText.textContent = Math.ceil(duration);
     }
 
     timer = setInterval(function() {
         timeLeft -= 1;
-        timerText.textContent = timeLeft;
+        timerText.textContent = Math.ceil(timeLeft);
 
         if (timeLeft <= 0) {
             clearInterval(timer);
