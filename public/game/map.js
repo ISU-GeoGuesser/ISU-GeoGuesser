@@ -109,15 +109,23 @@ function startTimer(duration) {
 
 }
 
+function endGame() {
+    clearInterval(timer);
+    roundText.textContent = "Game Over";
+    timerText.textContent = "0";
+    submitButton.disabled = true;
+    submitButton.textContent = "Game Over";
+    history.replaceState(null, "", window.location.pathname);
+}
+
 function onMessage(event) {
 
     const msg = JSON.parse(event.data);
+    const data = msg.d;
 
     switch (msg.t) {
 
         case "ROUND_STARTED": {
-            const data = msg.d;
-
             // Update the campus photo
             if (roundPhoto) {
                 let url = new URL(data.image_url, window.location.origin);
@@ -148,7 +156,6 @@ function onMessage(event) {
         }
 
         case "ROUND_OVER": {
-            const data = msg.d;
             clearInterval(timer);
 
             // Update running score display
@@ -167,9 +174,18 @@ function onMessage(event) {
             break;
         }
 
+        case "GAME_OVER": {
+            if (scoreText) {
+                scoreText.textContent = data.total_score;
+            }
+
+            endGame();
+            break;
+        }
+
         case "GUESS": {
             // Server confirms whether the guess was recorded (bool)
-            if (!msg.d) {
+            if (!data) {
                 alert("Guess was not accepted — the round may have already ended.");
             }
             break;
@@ -180,11 +196,5 @@ function onMessage(event) {
 }
 
 function onClose() {
-
-    clearInterval(timer);
-    roundText.textContent = "Game Over";
-    timerText.textContent = "0";
-    submitButton.disabled = true;
-    submitButton.textContent = "Game Over";
-
+    endGame();
 }
