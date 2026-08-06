@@ -155,7 +155,7 @@ var campusBottomLeft = Location{40.502612, -89.000830}
 var campusTopRight = Location{40.520390, -88.982966}
 var campusHeight = campusTopRight.Latitude - campusBottomLeft.Latitude
 var campusWidth = campusTopRight.Longitude - campusBottomLeft.Longitude
-var campusMaxDistSqr = utils.Squaref(campusHeight*0.5) + utils.Squaref(campusWidth*0.5)
+var campusMaxDistSqr = utils.Squaref(campusHeight*0.1) + utils.Squaref(campusWidth*0.1)
 
 func calcGuessScore(ref *Location, guess *Location) int {
 	diffLat := guess.Latitude - ref.Latitude
