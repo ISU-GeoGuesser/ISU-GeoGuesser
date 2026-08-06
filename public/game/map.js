@@ -1,8 +1,7 @@
 
 // Connect to the backend game via WebSocket.
 // If no ?id= is present in the URL, create a new game first.
-const backendHost = "localhost:3000";
-const wsProtocol = location.protocol === "https:" ? "wss" : "ws";
+const backendUrl = new URL("https://api.reggieguessr.com");
 
 let socket;
 
@@ -10,7 +9,7 @@ async function initGame() {
     let gameId = new URLSearchParams(window.location.search).get("id");
 
     if (!gameId) {
-        const res = await fetch(`http://${backendHost}/games/start`);
+        const res = await fetch(new URL("/games/start", backendUrl));
         if (!res.ok) {
             alert("Failed to start a game. Is the backend running?");
             return;
@@ -21,7 +20,9 @@ async function initGame() {
         history.replaceState(null, "", `?id=${gameId}`);
     }
 
-    socket = new WebSocket(`${wsProtocol}://${backendHost}/games/${gameId}`);
+    let wsUrl = new URL(`/games/${gameId}`, backendUrl);
+    wsUrl.protocol = backendUrl.protocol === "https" ? "wss" : "ws";
+    socket = new WebSocket(wsUrl);
     socket.addEventListener("message", onMessage);
     socket.addEventListener("close", onClose);
 }
@@ -117,7 +118,8 @@ function onMessage(event) {
 
             // Update the campus photo
             if (roundPhoto) {
-                roundPhoto.src = data.image_url;
+                let url = new URL(data.image_url, window.location.origin);
+                roundPhoto.src = url;
             }
 
             // Round counter comes from the backend
