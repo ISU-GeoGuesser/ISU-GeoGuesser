@@ -4,8 +4,11 @@ import (
 	"log"
 	"maps"
 	"math"
+	"path"
 	"time"
 
+	"isu-geoguesser/config"
+	"isu-geoguesser/database"
 	utils "isu-geoguesser/utils"
 	ws "isu-geoguesser/websocket"
 )
@@ -52,6 +55,14 @@ type MessageRoundOver struct {
 	*Location
 }
 
+// t: "GAME_OVER"
+//
+// The game ended, and the lobby will close shortly.
+type MessageGameOver struct {
+	// How many total points you scored this game.
+	TotalScore int `json:"total_score"`
+}
+
 //
 // Game logic
 //
@@ -85,14 +96,6 @@ func (s *gameState) NextRoundTimer() <-chan time.Time {
 	}
 }
 
-// Returns a pair of image URL/GPS location
-func (s *gameState) NextRoundLocation() (string, *Location, error) {
-	// TODO: replace with database query/random selection
-	return "https://library.illinoisstate.edu/images/homepage/spotlight/milner-campus-entrance-680x284.jpg",
-		&Location{40.511937, -88.991451},
-		nil
-}
-
 // Called to advance the game state when the phase timer expires
 //
 // Returns true if the game is finished
@@ -111,11 +114,21 @@ func (s *gameState) NextGamePhase() bool {
 	return false
 }
 
+func (s *gameState) GetCurrentDBLocation() *database.Location {
+	return &s.Locations[s.RoundCounter-1]
+}
+
+func (s *gameState) GetCurrentLocation() Location {
+	loc := s.GetCurrentDBLocation()
+	return Location{
+		Latitude:  loc.Latitude,
+		Longitude: loc.Longitude,
+	}
+}
+
 func (s *gameState) StartRound() {
-	url, loc, err := s.NextRoundLocation()
-	if err != nil {
-		// TODO: a database error probably has to end the game?
-		log.Printf("[%s] NextRoundLocation() failed: %v", s.ID, err)
+	if s.RoundCounter >= s.RoundTotal {
+		s.EndGame()
 		return
 	}
 
@@ -124,9 +137,7 @@ func (s *gameState) StartRound() {
 	s.RoundCounter += 1
 	log.Printf("[%s] Round %d starting", s.ID, s.RoundCounter)
 
-	s.LocationURL = url
-	s.Location = loc
-
+	url := path.Join(config.IMAGE_URL_PREFIX, s.GetCurrentDBLocation().Filename)
 	msg := ws.NewMessageAssert("ROUND_STARTED", &MessageRoundStarted{
 		ImageUrl: url,
 		Duration: nil,
@@ -160,18 +171,32 @@ func (s *gameState) EndRound() {
 	s.PhaseTimer = time.NewTimer(5 * time.Second).C
 	log.Printf("[%s] Round %d ended", s.ID, s.RoundCounter)
 
+	loc := s.GetCurrentLocation()
 	for _, ply := range s.Players {
 		score := 0
 		if ply.Guess != nil {
-			score = calcGuessScore(s.Location, ply.Guess)
+			score = calcGuessScore(&loc, ply.Guess)
 		}
 
 		msg := ws.NewMessageAssert("ROUND_OVER", &MessageRoundOver{
 			Score:    score,
-			Location: s.Location,
+			Location: &loc,
 		})
 		ply.SendMessage(msg)
 		ply.TotalScore += score
+	}
+}
+
+func (s *gameState) EndGame() {
+	s.Phase = GamePhaseOver
+	s.PhaseTimer = time.NewTimer(10 * time.Second).C
+	log.Printf("[%s] Game ended", s.ID)
+
+	for _, ply := range s.Players {
+		msg := ws.NewMessageAssert("GAME_OVER", &MessageGameOver{
+			TotalScore: ply.TotalScore,
+		})
+		ply.SendMessage(msg)
 	}
 }
 

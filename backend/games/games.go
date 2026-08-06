@@ -2,15 +2,18 @@ package games
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"sync"
 	"time"
 
+	"isu-geoguesser/database"
+	ws "isu-geoguesser/websocket"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	ws "isu-geoguesser/websocket"
 )
 
 type playerState struct {
@@ -48,17 +51,28 @@ type gameState struct {
 
 	Phase        GamePhase
 	PhaseTimer   <-chan time.Time
+	RoundTotal   int
 	RoundCounter int
-	LocationURL  string
-	Location     *Location
+	Locations    []database.Location
 }
 
-func newGameState(id uuid.UUID) *gameState {
-	return &gameState{
-		ID:      id,
-		Players: make(map[net.Addr]*playerState),
-		Phase:   GamePhaseWaitingForPlayers,
+func newGameState(id uuid.UUID) (*gameState, error) {
+	// TODO: game settings
+	total := 10
+	locs, err := database.GetRandomLocations(total)
+	if err != nil {
+		return nil, fmt.Errorf("random locations: %w", err)
 	}
+	// database might have fewer locations than we have rounds
+	total = len(locs)
+
+	return &gameState{
+		ID:         id,
+		Players:    make(map[net.Addr]*playerState),
+		Phase:      GamePhaseWaitingForPlayers,
+		RoundTotal: total,
+		Locations:  locs,
+	}, nil
 }
 
 type gameMessenger struct {
@@ -175,14 +189,18 @@ func newGameHub() gameHub {
 	return gameHub{}
 }
 
-func (h *gameHub) NewGame() uuid.UUID {
+func (h *gameHub) NewGame() (*uuid.UUID, error) {
 	id := uuid.New()
+	state, err := newGameState(id)
+	if err != nil {
+		return nil, err
+	}
+
 	msg := newGameMessenger()
-	state := newGameState(id)
 	go state.Loop(h, msg)
 
 	h.m.Store(id, msg)
-	return id
+	return &id, nil
 }
 
 func (h *gameHub) FindGame(id uuid.UUID) *gameMessenger {
@@ -202,10 +220,15 @@ func AddRoutes(eng *gin.Engine) {
 
 	games := eng.Group("/games")
 	games.GET("/start", func(ctx *gin.Context) {
-		id := hub.NewGame()
-		ctx.JSON(http.StatusOK, gin.H{
-			"id": id.String(),
-		})
+		id, err := hub.NewGame()
+		if err != nil {
+			log.Printf("Failed to start game: %v", err)
+			ctx.Status(http.StatusInternalServerError)
+		} else {
+			ctx.JSON(http.StatusOK, gin.H{
+				"id": id.String(),
+			})
+		}
 	})
 
 	games.GET("/:id", func(ctx *gin.Context) {
