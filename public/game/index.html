@@ -1,0 +1,82 @@
+<!--@author: Joe Jankowicz :D-->
+
+<!DOCTYPE html> 
+
+<html lang = "en"> 
+
+<head>
+
+
+    <meta charset="UTF-8">
+    <meta name ="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReggieGuessr</title>
+
+    <!--leaflet css-->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+    <!--main website style file-->
+    <link rel="stylesheet" href="game.css">
+
+
+</head>
+
+<body>
+
+    <!--campus image-->
+    <img src="isuTestPhoto.jpg" alt="campus location" class="roundPhoto">
+    
+    <div class="darkOverlay"></div>
+
+    <header class="topBar">
+
+        <h2>
+            <span class="whiteText">Reggie</span>
+            <span class="redText">Guessr</span>
+        </h2>
+
+        <nav>
+            <a href="#">home</a>
+            <a href="#">leaderboard</a>
+            <a href="#">sign in</a>
+        </nav>
+
+    </header>
+
+    <section class="gameInfo">
+
+        <div class="infoBox">
+            <p>Round</p>
+            <h1 id="roundText">1/5</h1>
+        </div>
+
+        <div class="infoBox">
+            <p>Timer</p>
+            <h1 id="timer">60</h1>
+        </div>
+
+        <div class="infoBox">
+            <p>Score</p>
+            <h1>0</h1>
+        </div>
+
+    </section>
+
+    <section class="mapScreen">
+
+        <p class="mapTitle">Place Your Guess!</p>
+
+        <div id="map">
+            <p>interactive map spot</p>
+        </div>
+
+        <button id="submitGuess" class="submitButton">
+            Submit Guess
+        </button>
+
+    </section>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="map.js"></script>   
+
+</body>
+</html>
