@@ -39,8 +39,9 @@ func main() {
 	// -- gin stuff --
 	r := gin.Default()
 
+	frontendDomain := utils.GetEnvFatal("FRONTEND_DOMAIN")
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{utils.GetEnvFatal("FRONTEND_DOMAIN")},
+		AllowOrigins:     []string{frontendDomain},
 		AllowMethods:     []string{"GET", "POST"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-CSRF-Token"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -58,7 +59,7 @@ func main() {
 
 	r.GET("leaderboard", getLeaderboard)
 
-	games.AddRoutes(r)
+	games.AddRoutes(r, frontendDomain)
 
 	if err := r.Run(":3000"); err != nil {
 		log.Fatalf("failed to run server: %v", err)

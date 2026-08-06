@@ -27,7 +27,7 @@ func TestGamesStartJoinLeave(t *testing.T) {
 	database.Open()
 
 	r := gin.Default()
-	AddRoutes(r)
+	AddRoutes(r, "*")
 
 	w := testHTTPRequest(r, "GET", "/games/start", nil)
 

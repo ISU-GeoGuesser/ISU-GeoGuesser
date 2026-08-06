@@ -45,12 +45,6 @@ type Connection struct {
 	Rx   chan *Message
 }
 
-var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
-}
-
 func (c *Connection) Close() {
 	close(c.Tx)
 }
@@ -92,7 +86,17 @@ out:
 	}
 }
 
-func Open(c *gin.Context) (*Connection, error) {
+func Open(c *gin.Context, allowedOrigin string) (*Connection, error) {
+	upgrader := websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool {
+			if allowedOrigin == "*" {
+				return true
+			} else {
+				return r.Header.Get("Origin") == allowedOrigin
+			}
+		},
+	}
+
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		return nil, err

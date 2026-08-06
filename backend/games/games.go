@@ -215,7 +215,7 @@ func (h *gameHub) ForgetGame(id uuid.UUID) {
 	h.m.Delete(id)
 }
 
-func AddRoutes(eng *gin.Engine) {
+func AddRoutes(eng *gin.Engine, allowedOrigin string) {
 	hub := newGameHub()
 
 	games := eng.Group("/games")
@@ -248,7 +248,7 @@ func AddRoutes(eng *gin.Engine) {
 			return
 		}
 
-		conn, err := ws.Open(ctx)
+		conn, err := ws.Open(ctx, allowedOrigin)
 		if err != nil {
 			log.Printf("Failed to open WebSocket: %v", err)
 			return
