@@ -11,6 +11,10 @@
     <meta name ="viewport" content="width=device-width, initial-scale=1.0">
     <title>ReggieGuessr</title>
 
+    <!--leaflet css-->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+    <!--main website style file-->
     <link rel="stylesheet" href="game.css">
 
 
@@ -42,12 +46,12 @@
 
         <div class="infoBox">
             <p>Round</p>
-            <h1>1/5</h1>
+            <h1 id="roundText">1/5</h1>
         </div>
 
         <div class="infoBox">
             <p>Timer</p>
-            <h1>60</h1>
+            <h1 id="timer">60</h1>
         </div>
 
         <div class="infoBox">
@@ -65,11 +69,14 @@
             <p>interactive map spot</p>
         </div>
 
-        <a href="#" class="submitButton">
+        <button id="submitGuess" class="submitButton">
             Submit Guess
-        </a>
+        </button>
 
     </section>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="map.js"></script>   
 
 </body>
 </html>
