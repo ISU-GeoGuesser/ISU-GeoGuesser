@@ -47,6 +47,8 @@ submitButton.addEventListener("click", function() {
     alert("Guess Submitted!\n" + "Latitude: " +playerGuess.lat.toFixed(5)+ "\n" + "Longitude: " + 
     playerGuess.lng.toFixed(5)); 
 
+    nextRound(); 
+
 }); 
 
 
@@ -103,11 +105,5 @@ function endGame() {
     submitButton.textContent = "Game Over"; 
 
 }
-
-submitButton.addEventListener("click", function() { 
-
-    nextRound(); 
-
-}); 
 
 startTimer(); 
