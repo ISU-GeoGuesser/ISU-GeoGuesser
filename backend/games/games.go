@@ -100,6 +100,11 @@ func (s *gameState) Loop(hub *gameHub, msg *gameMessenger) {
 
 out:
 	for {
+		var timeout <-chan time.Time
+		if s.Phase == GamePhaseWaitingForPlayers {
+			timeout = time.After(10 * time.Second)
+		}
+
 		select {
 		case msg := <-msg.PlayerMsg:
 			if err := s.HandlePlayerMessage(msg.ply, msg.msg); err != nil {
@@ -123,6 +128,8 @@ out:
 			if s.NextGamePhase() {
 				break out
 			}
+		case <-timeout:
+			break out
 		}
 	}
 
