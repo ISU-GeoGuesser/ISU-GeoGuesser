@@ -8,7 +8,7 @@ document.querySelector("form").addEventListener("submit", async (e) => {
     const body = new URLSearchParams(new FormData(form));
 
     try {
-        const res = await fetch("http://api.reggieguessr.com/login", {
+        const res = await fetch("https://api.reggieguessr.com/login", {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
             body: body.toString(),
