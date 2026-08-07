@@ -21,7 +21,7 @@ async function initGame() {
     }
 
     let wsUrl = new URL(`/games/${gameId}`, backendUrl);
-    wsUrl.protocol = backendUrl.protocol === "https" ? "wss" : "ws";
+    wsUrl.protocol = backendUrl.protocol === "https:" ? "wss" : "ws";
     socket = new WebSocket(wsUrl);
     socket.addEventListener("message", onMessage);
     socket.addEventListener("close", onClose);
