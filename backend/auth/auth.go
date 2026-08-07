@@ -3,6 +3,8 @@ package auth
 import (
 	"errors"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/lib/pq"
@@ -45,7 +47,7 @@ func register(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"message": "Account created"})
 }
 
-func login(c *gin.Context) {
+func login(c *gin.Context, domain string) {
 	username := c.PostForm("username")
 	password := c.PostForm("password")
 
@@ -78,8 +80,8 @@ func login(c *gin.Context) {
 	}
 
 	//                                       maxAge, path, domain, secure, httpOnly
-	c.SetCookie("session_token", sessionToken, 86400, "/", "", true, true)
-	c.SetCookie("csrf_token", csrfToken, 86400, "/", "", true, false)
+	c.SetCookie("session_token", sessionToken, 86400, "/", domain, true, true)
+	c.SetCookie("csrf_token", csrfToken, 86400, "/", domain, true, false)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Logged in"})
 }
@@ -106,8 +108,26 @@ func logout(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Logged out"})
 }
 
-func AddRoutes(r *gin.Engine) {
+func AddRoutes(r *gin.Engine, allowedOrigin string) {
+	domain := ""
+	if allowedOrigin != "*" {
+		url, err := url.Parse(allowedOrigin)
+		if err != nil {
+			panic("FRONTEND_DOMAIN is not a valid URL: " + err.Error())
+		}
+
+		host := url.Hostname()
+		split := strings.Split(host, ".")
+		if len(split) > 2 {
+			split = split[len(split)-2:]
+		}
+
+		domain = strings.Join(split, ".")
+	}
+
 	r.POST("/register", register)
-	r.POST("/login", login)
+	r.POST("/login", func(ctx *gin.Context) {
+		login(ctx, domain)
+	})
 	r.POST("/logout", logout)
 }

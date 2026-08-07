@@ -49,7 +49,7 @@ func main() {
 		MaxAge:           12 * time.Hour,
 	}))
 
-	auth.AddRoutes(r)
+	auth.AddRoutes(r, frontendDomain)
 
 	locations := r.Group("/locations").Use(auth.AuthorizeMiddleware())
 	{
