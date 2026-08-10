@@ -8,6 +8,9 @@ It was created as a class project for IT 391 to help incoming and transfer stude
 The backend and frontend servers are written in [Go](https://go.dev/), which has to be installed to build the project.
 
 A [PostgreSQL](https://www.postgresql.org/) database is required for storing user accounts and image locations.
+Create a role (user) and a database for it to take ownership of,
+then use the provided schema dump to populate the tables.
+For example: `psql -d <database_name> -U <username> -f schema.psql`.
 
 `libwebp` is required by the backend for compressing images as they are uploaded.
 
